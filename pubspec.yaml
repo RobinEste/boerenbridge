@@ -1,0 +1,46 @@
+name: boerenbridge
+description: Nederlandse multiplayer Boerenbridge app
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.10.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Backend
+  supabase_flutter: ^2.8.0
+
+  # State management
+  flutter_riverpod: ^2.6.0
+  riverpod_annotation: ^2.6.0
+
+  # Routing
+  go_router: ^14.6.0
+
+  # UI helpers
+  flutter_animate: ^4.5.0
+  google_fonts: ^6.2.0
+
+  # Utils
+  uuid: ^4.5.0
+  collection: ^1.19.0
+  shared_preferences: ^2.3.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+  # Code generation voor Riverpod
+  riverpod_generator: ^2.6.0
+  build_runner: ^2.4.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/
+    - assets/sounds/

@@ -1,0 +1,40 @@
+name: Database Cleanup
+
+on:
+  schedule:
+    # Elke nacht om 03:00 UTC (04:00 Nederlandse wintertijd, 05:00 zomertijd)
+    - cron: '0 3 * * *'
+
+  # Handmatig kunnen triggeren via GitHub Actions UI
+  workflow_dispatch:
+
+jobs:
+  cleanup:
+    name: Cleanup oude games
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Roep cleanup functie aan
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          echo "Starting cleanup at $(date)"
+
+          response=$(curl -s -X POST \
+            "${SUPABASE_URL}/rest/v1/rpc/cleanup_old_games" \
+            -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
+            -H "Content-Type: application/json")
+
+          echo "Cleanup result: $response"
+
+          # Check of het gelukt is
+          if echo "$response" | grep -q "deleted_games"; then
+            echo "✅ Cleanup successful!"
+            echo "$response" | jq .
+          else
+            echo "❌ Cleanup may have failed"
+            echo "$response"
+            exit 1
+          fi
