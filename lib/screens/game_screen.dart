@@ -7,7 +7,9 @@ import 'package:go_router/go_router.dart';
 import '../game/game_state.dart';
 import '../game/models.dart' as models;
 import '../providers/game_provider.dart';
-import '../services/supabase_service.dart';
+import '../services/connection_service.dart';
+import '../theme/app_colors.dart';
+import '../widgets/connection_overlay.dart';
 
 class GameScreen extends ConsumerStatefulWidget {
   final String gameId;
@@ -204,7 +206,9 @@ class _GameScreenState extends ConsumerState<GameScreen> {
       );
     }
 
-    return Scaffold(
+    final connectionService = gameState.connectionService;
+
+    Widget scaffold = Scaffold(
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.close),
@@ -232,13 +236,28 @@ class _GameScreenState extends ConsumerState<GameScreen> {
         ),
       ),
     );
+
+    // Wrap met connection overlay als service beschikbaar is
+    if (connectionService != null) {
+      return ConnectionOverlay(
+        connectionService: connectionService,
+        stateStream: connectionService.stateStream,
+        onCancel: () {
+          ref.read(gameProvider.notifier).leaveGame();
+          context.go('/');
+        },
+        child: scaffold,
+      );
+    }
+
+    return scaffold;
   }
 
   Widget _buildBidSummaryOverlay(BuildContext context, GameState game) {
     final theme = Theme.of(context);
 
     return Container(
-      color: Colors.black54,
+      color: AppColors.warmBrown.withValues(alpha: 0.6),
       child: Center(
         child: Card(
           margin: const EdgeInsets.all(24),
@@ -331,7 +350,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
         : null;
 
     return Container(
-      color: Colors.black54,
+      color: AppColors.warmBrown.withValues(alpha: 0.6),
       child: Center(
         child: Card(
           margin: const EdgeInsets.all(24),
@@ -571,20 +590,16 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                 final hasBid = player.bid != null;
 
                 return ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: hasBid
-                        ? theme.colorScheme.primary
-                        : theme.colorScheme.surfaceContainerHighest,
-                    child: Text(
-                      player.name[0].toUpperCase(),
-                      style: TextStyle(
-                        color: hasBid
-                            ? theme.colorScheme.onPrimary
-                            : theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
+                  leading: _buildPlayerAvatar(theme, player, hasBid),
+                  title: Row(
+                    children: [
+                      Text(player.name),
+                      if (player.isBotControlled) ...[
+                        const SizedBox(width: 8),
+                        _buildBotBadge(theme),
+                      ],
+                    ],
                   ),
-                  title: Text(player.name),
                   trailing: hasBid
                       ? Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -818,17 +833,17 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   }
 
   Widget _buildCard(models.Card card, {bool large = false}) {
-    final size = large ? 80.0 : 60.0;
-    final fontSize = large ? 24.0 : 18.0;
+    // 20% groter: 60 → 72 (normaal), 80 → 96 (large)
+    final size = large ? 96.0 : 72.0;
+    final fontSize = large ? 28.0 : 22.0;
 
     // Safely get the card text
     String cardText;
     Color cardColor;
     try {
       cardText = '${card.rank.symbol}${card.suit.symbol}';
-      cardColor = card.suit.isRed ? Colors.red : Colors.black;
+      cardColor = card.suit.isRed ? AppColors.cardSuitRed : AppColors.cardSuitBlack;
     } catch (e) {
-      print('DEBUG _buildCard error: $e, card=$card, rank=${card.rank}, suit=${card.suit}');
       cardText = '?';
       cardColor = Colors.grey;
     }
@@ -837,14 +852,14 @@ class _GameScreenState extends ConsumerState<GameScreen> {
       width: size * 0.7,
       height: size,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.cardWhite,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade300),
+        border: Border.all(color: AppColors.cardBorderWarm, width: 1.5),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
+            color: AppColors.warmBrown.withValues(alpha: 0.15),
+            blurRadius: 6,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
@@ -857,6 +872,71 @@ class _GameScreenState extends ConsumerState<GameScreen> {
             color: cardColor,
           ),
         ),
+      ),
+    );
+  }
+
+  /// Bouw een speler avatar met optioneel bot icoon
+  Widget _buildPlayerAvatar(ThemeData theme, models.Player player, bool isActive) {
+    return Stack(
+      children: [
+        CircleAvatar(
+          backgroundColor: isActive
+              ? theme.colorScheme.primary
+              : theme.colorScheme.surfaceContainerHighest,
+          child: Text(
+            player.name[0].toUpperCase(),
+            style: TextStyle(
+              color: isActive
+                  ? theme.colorScheme.onPrimary
+                  : theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+        if (player.isBotControlled)
+          Positioned(
+            right: -2,
+            bottom: -2,
+            child: Container(
+              padding: const EdgeInsets.all(2),
+              decoration: const BoxDecoration(
+                color: Colors.orange,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.smart_toy,
+                size: 12,
+                color: Colors.white,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  /// Bouw een bot badge label
+  Widget _buildBotBadge(ThemeData theme) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: Colors.orange.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.orange, width: 1),
+      ),
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.smart_toy, size: 12, color: Colors.orange),
+          SizedBox(width: 4),
+          Text(
+            'BOT',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              color: Colors.orange,
+            ),
+          ),
+        ],
       ),
     );
   }

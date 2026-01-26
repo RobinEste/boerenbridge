@@ -144,6 +144,8 @@ class Player {
   int? bid;           // Geboden aantal slagen
   int tricksTaken;    // Behaalde slagen deze ronde
   int totalScore;     // Totaalscore over alle rondes
+  bool isBotControlled; // Is de bot momenteel aan het spelen voor deze speler?
+  DateTime? lastSeenAt;  // Laatste keer dat de speler actief was
 
   Player({
     required this.id,
@@ -153,6 +155,8 @@ class Player {
     this.bid,
     this.tricksTaken = 0,
     this.totalScore = 0,
+    this.isBotControlled = false,
+    this.lastSeenAt,
   }) : hand = hand ?? [];
 
   /// Check of dit de huidige gebruiker is
@@ -193,6 +197,8 @@ class Player {
     'bid': bid,
     'tricks_taken': tricksTaken,
     'total_score': totalScore,
+    'is_bot_controlled': isBotControlled,
+    'last_seen_at': lastSeenAt?.toIso8601String(),
   };
 
   factory Player.fromJson(Map<String, dynamic> json) => Player(
@@ -205,6 +211,10 @@ class Player {
     bid: json['bid'] as int?,
     tricksTaken: json['tricks_taken'] as int? ?? 0,
     totalScore: json['total_score'] as int? ?? 0,
+    isBotControlled: json['is_bot_controlled'] as bool? ?? false,
+    lastSeenAt: json['last_seen_at'] != null
+        ? DateTime.parse(json['last_seen_at'] as String)
+        : null,
   );
 }
 

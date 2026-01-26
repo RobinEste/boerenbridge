@@ -8,6 +8,7 @@ import 'screens/home_screen.dart';
 import 'screens/lobby_screen.dart';
 import 'screens/game_screen.dart';
 import 'services/supabase_service.dart';
+import 'theme/app_colors.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -71,18 +72,20 @@ class BoerenbridgeApp extends StatelessWidget {
     final baseTheme = ThemeData(
       useMaterial3: true,
       colorScheme: ColorScheme.fromSeed(
-        seedColor: const Color(0xFF1B5E20), // Donkergroen - kaartspel thema
+        seedColor: AppColors.forestGreen, // Donkergroen - kaartspel thema
         brightness: Brightness.light,
       ),
     );
 
     return baseTheme.copyWith(
+      scaffoldBackgroundColor: AppColors.warmOffWhite,
       textTheme: GoogleFonts.interTextTheme(baseTheme.textTheme),
       appBarTheme: AppBarTheme(
         centerTitle: true,
-        backgroundColor: baseTheme.colorScheme.surface,
+        backgroundColor: AppColors.warmBeige,
         foregroundColor: baseTheme.colorScheme.onSurface,
         elevation: 0,
+        surfaceTintColor: Colors.transparent,
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
@@ -105,12 +108,27 @@ class BoerenbridgeApp extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
         ),
         filled: true,
+        fillColor: AppColors.warmCream,
       ),
-      cardTheme: const CardThemeData(
+      cardTheme: CardThemeData(
         elevation: 2,
-        shape: RoundedRectangleBorder(
+        color: AppColors.warmBeige,
+        surfaceTintColor: Colors.transparent,
+        shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.all(Radius.circular(16)),
         ),
+        shadowColor: AppColors.warmBrown.withValues(alpha: 0.3),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: AppColors.warmBeige,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+      ),
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: AppColors.warmBeige,
+        surfaceTintColor: Colors.transparent,
       ),
     );
   }

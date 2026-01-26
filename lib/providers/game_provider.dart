@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../game/game_state.dart';
 import '../game/models.dart' as models;
+import '../services/bot_service.dart';
+import '../services/connection_service.dart';
 import '../services/supabase_service.dart';
 
 /// Game provider state
@@ -11,12 +13,14 @@ class GameProviderState {
   final bool isLoading;
   final String? error;
   final bool isMyTurn;
+  final ConnectionService? connectionService;
 
   const GameProviderState({
     this.gameState,
     this.isLoading = false,
     this.error,
     this.isMyTurn = false,
+    this.connectionService,
   });
 
   GameProviderState copyWith({
@@ -24,12 +28,14 @@ class GameProviderState {
     bool? isLoading,
     String? error,
     bool? isMyTurn,
+    ConnectionService? connectionService,
   }) {
     return GameProviderState(
       gameState: gameState ?? this.gameState,
       isLoading: isLoading ?? this.isLoading,
       error: error,
       isMyTurn: isMyTurn ?? this.isMyTurn,
+      connectionService: connectionService ?? this.connectionService,
     );
   }
 }
@@ -40,6 +46,8 @@ class GameNotifier extends StateNotifier<GameProviderState> {
 
   StreamSubscription<GameState>? _gameSubscription;
   String? _currentGameId;
+  ConnectionService? _connectionService;
+  BotService? _botService;
 
   /// Laad en subscribe op een spel
   Future<void> loadGame(String gameId) async {
@@ -67,7 +75,29 @@ class GameNotifier extends StateNotifier<GameProviderState> {
         _updateGameState(gameState);
       }
 
-      state = state.copyWith(isLoading: false);
+      // Start connection service met heartbeat
+      _connectionService?.stop();
+      _connectionService = ConnectionService(
+        gameId: gameId,
+        onReconnected: () async {
+          // Haal verse state op na reconnect
+          final freshState = await SupabaseService.instance.getGameState(gameId);
+          if (freshState != null) {
+            _updateGameState(freshState);
+          }
+        },
+      );
+      _connectionService!.start();
+
+      // Start bot service voor automatische bot overname
+      _botService?.stop();
+      _botService = BotService(gameId: gameId);
+      _botService!.start();
+
+      state = state.copyWith(
+        isLoading: false,
+        connectionService: _connectionService,
+      );
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
@@ -146,6 +176,10 @@ class GameNotifier extends StateNotifier<GameProviderState> {
   /// Verlaat het spel
   void leaveGame() {
     _gameSubscription?.cancel();
+    _connectionService?.stop();
+    _connectionService = null;
+    _botService?.stop();
+    _botService = null;
     _currentGameId = null;
     state = const GameProviderState();
   }
@@ -158,6 +192,8 @@ class GameNotifier extends StateNotifier<GameProviderState> {
   @override
   void dispose() {
     _gameSubscription?.cancel();
+    _connectionService?.stop();
+    _botService?.stop();
     super.dispose();
   }
 }

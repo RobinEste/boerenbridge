@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../config.dart' show AppConfig;
 import '../providers/lobby_provider.dart';
+import '../theme/app_colors.dart';
 
 class LobbyScreen extends ConsumerStatefulWidget {
   final String joinCode;
@@ -68,12 +69,6 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
     final isLoading = lobbyState.isLoading;
     final error = lobbyState.error;
 
-    // Debug info
-    print('LOBBY BUILD: gameId=${lobbyState.gameId}, players=${players.length}, isHost=${lobbyState.isHost}');
-    for (final p in players) {
-      print('LOBBY PLAYER: ${p.name} (${p.id})');
-    }
-
     // Toon errors
     ref.listen<LobbyState>(lobbyProvider, (previous, next) {
       if (next.error != null && next.error != previous?.error) {
@@ -120,8 +115,12 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
                             vertical: 16,
                           ),
                           decoration: BoxDecoration(
-                            color: theme.colorScheme.primaryContainer,
+                            color: AppColors.warmCream,
                             borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: AppColors.warmBrownLight,
+                              width: 2,
+                            ),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -131,13 +130,13 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
                                 style: theme.textTheme.headlineLarge?.copyWith(
                                   fontWeight: FontWeight.bold,
                                   letterSpacing: 8,
-                                  color: theme.colorScheme.onPrimaryContainer,
+                                  color: AppColors.warmBrown,
                                 ),
                               ),
                               const SizedBox(width: 16),
-                              Icon(
+                              const Icon(
                                 Icons.copy,
-                                color: theme.colorScheme.onPrimaryContainer,
+                                color: AppColors.warmBrown,
                               ),
                             ],
                           ),
@@ -155,21 +154,6 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-
-              // DEBUG: Show state info
-              Container(
-                padding: const EdgeInsets.all(8),
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: Colors.yellow.shade100,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  'DEBUG: gameId=${lobbyState.gameId?.substring(0, 8) ?? "null"}, '
-                  'players=${players.length}, isHost=${lobbyState.isHost}',
-                  style: const TextStyle(fontSize: 12, fontFamily: 'monospace'),
-                ),
-              ),
 
               // Spelers lijst
               Text(

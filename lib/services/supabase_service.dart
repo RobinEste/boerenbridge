@@ -224,9 +224,22 @@ class SupabaseService {
   }
   
   // ===========================================================================
+  // HEARTBEAT & CONNECTION
+  // ===========================================================================
+
+  /// Update last_seen_at voor de huidige speler in het spel
+  Future<void> updateLastSeen(String gameId) async {
+    if (!isAuthenticated) return;
+
+    await _client.from('game_players').update({
+      'last_seen_at': DateTime.now().toIso8601String(),
+    }).eq('game_id', gameId).eq('user_id', currentUserId!);
+  }
+
+  // ===========================================================================
   // GAME ACTIONS
   // ===========================================================================
-  
+
   /// Plaats een bod
   Future<void> placeBid(String gameId, int bid) async {
     await _performAction(gameId, (state) {
@@ -248,6 +261,78 @@ class SupabaseService {
     await _performAction(gameId, (state) {
       state.nextRound();
     }, actionType: 'next_round');
+  }
+
+  // ===========================================================================
+  // BOT ACTIONS
+  // ===========================================================================
+
+  /// Plaats een bod als bot voor een specifieke speler
+  Future<void> placeBidAsBot(String gameId, String playerId, int bid) async {
+    await _performActionAsBot(gameId, playerId, (state) {
+      state.placeBid(playerId, bid);
+    }, actionType: 'bot_bid', payload: {'bid': bid, 'player_id': playerId});
+  }
+
+  /// Speel een kaart als bot voor een specifieke speler
+  Future<void> playCardAsBot(String gameId, String playerId, Card card) async {
+    await _performActionAsBot(gameId, playerId, (state) {
+      state.playCard(playerId, card);
+    }, actionType: 'bot_play_card', payload: {'card': card.toJson(), 'player_id': playerId});
+  }
+
+  Future<void> _performActionAsBot(
+    String gameId,
+    String playerId,
+    void Function(GameState) action, {
+    required String actionType,
+    Map<String, dynamic>? payload,
+  }) async {
+    // Haal huidige state op
+    final stateResponse = await _client
+        .from('game_state')
+        .select()
+        .eq('game_id', gameId)
+        .single();
+
+    final currentVersion = stateResponse['version'] as int;
+    final state = GameState.fromJson(stateResponse['state'] as Map<String, dynamic>);
+
+    // Markeer speler als bot controlled
+    final player = state.players.firstWhere((p) => p.id == playerId);
+    player.isBotControlled = true;
+
+    // Voer actie uit
+    action(state);
+
+    // Update met optimistic locking
+    final updateResponse = await _client
+        .from('game_state')
+        .update({
+          'state': state.toJson(),
+          'version': currentVersion + 1,
+          'updated_at': DateTime.now().toIso8601String(),
+        })
+        .eq('game_id', gameId)
+        .eq('version', currentVersion)
+        .select();
+
+    if ((updateResponse as List).isEmpty) {
+      throw ConcurrentModificationException();
+    }
+
+    // Log bot actie
+    try {
+      await _client.from('game_actions').insert({
+        'game_id': gameId,
+        'player_id': playerId,
+        'action_type': actionType,
+        'payload': payload,
+        'state_version': currentVersion,
+      });
+    } catch (e) {
+      // Actie logging mag niet de hoofdactie laten falen
+    }
   }
   
   String _getMyPlayerId(GameState state) {
@@ -424,6 +509,25 @@ class SupabaseService {
       id: p['id'] as String,
       odataId: p['user_id'] as String?,
       name: p['display_name'] as String,
+    )).toList();
+  }
+
+  /// Haal spelers op met last_seen_at voor bot detectie
+  Future<List<Player>> getPlayersWithLastSeen(String gameId) async {
+    final response = await _client
+        .from('game_players')
+        .select()
+        .eq('game_id', gameId)
+        .isFilter('left_at', null)
+        .order('seat_position');
+
+    return (response as List).map((p) => Player(
+      id: p['id'] as String,
+      odataId: p['user_id'] as String?,
+      name: p['display_name'] as String,
+      lastSeenAt: p['last_seen_at'] != null
+          ? DateTime.parse(p['last_seen_at'] as String)
+          : null,
     )).toList();
   }
   
