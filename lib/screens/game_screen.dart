@@ -25,9 +25,8 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   Timer? _pauseTimer;
 
   // Track vorige state om veranderingen te detecteren
-  bool _wasInBiddingPhase = false;
-  int? _lastTrickCardCount;
   models.Trick? _completedTrickToShow;
+  String? _lastShownTrickId; // Unieke ID van de laatst getoonde slag
 
   @override
   void initState() {
@@ -124,20 +123,30 @@ class _GameScreenState extends ConsumerState<GameScreen> {
 
         // Check of er net een slag is voltooid
         if (nextGame.phase == GamePhase.playing) {
-          final currentTrickCards = nextGame.currentTrick?.cards.length ?? 0;
           final completedTrick = nextGame.completedTrick;
 
-          // Als er een voltooide slag is en we tonen hem nog niet
-          if (completedTrick != null &&
-              completedTrick.cards.length == nextGame.players.length &&
-              !_showTrickResult &&
-              _completedTrickToShow == null) {
+          // Maak unieke ID voor deze slag (gebaseerd op de kaarten)
+          String? trickId;
+          if (completedTrick != null && completedTrick.cards.length == nextGame.players.length) {
+            trickId = completedTrick.cards.map((pc) => '${pc.playerId}:${pc.card}').join(',');
+          }
+
+          // Als er een voltooide slag is die we nog niet hebben getoond
+          if (trickId != null &&
+              trickId != _lastShownTrickId &&
+              !_showTrickResult) {
             setState(() {
               _showTrickResult = true;
               _completedTrickToShow = completedTrick;
+              _lastShownTrickId = trickId;
             });
             _startPauseTimer(_dismissTrickResult);
           }
+        }
+
+        // Reset tracking bij nieuwe ronde
+        if (prevGame.phase != GamePhase.bidding && nextGame.phase == GamePhase.bidding) {
+          _lastShownTrickId = null;
         }
       }
     });

@@ -1,0 +1,6 @@
+#!/bin/bash
+# Start Boerenbridge in Chrome
+
+cd "$(dirname "$0")"
+echo "🎴 Boerenbridge starten..."
+flutter run -d chrome

@@ -1,0 +1,6 @@
+#!/bin/bash
+# Stop Boerenbridge
+
+echo "🛑 Boerenbridge stoppen..."
+pkill -f "flutter" 2>/dev/null
+echo "✓ Gestopt"
