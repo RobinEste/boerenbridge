@@ -1,6 +1,6 @@
 # Boerenbridge
 
-Een Nederlandse multiplayer Boerenbridge app gebouwd met Flutter en Supabase.
+Een Nederlandse multiplayer Boerenbridge app gebouwd met Flutter en Supabase. De app heeft 118 unit tests die automatisch kunnen worden uitgevoerd bij elke wijziging. 
 
 **Dit is een volledig werkende basisversie die iedereen mag forken en verder doorontwikkelen!**
 
