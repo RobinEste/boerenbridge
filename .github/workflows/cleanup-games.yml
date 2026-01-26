@@ -21,20 +21,42 @@ jobs:
         run: |
           echo "Starting cleanup at $(date)"
 
-          response=$(curl -s -X POST \
+          # Debug: check of secrets zijn ingesteld (toon alleen lengte, niet de waarde)
+          echo "SUPABASE_URL length: ${#SUPABASE_URL}"
+          echo "SUPABASE_SERVICE_ROLE_KEY length: ${#SUPABASE_SERVICE_ROLE_KEY}"
+
+          if [ -z "$SUPABASE_URL" ]; then
+            echo "❌ Error: SUPABASE_URL secret is niet ingesteld!"
+            exit 1
+          fi
+
+          if [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+            echo "❌ Error: SUPABASE_SERVICE_ROLE_KEY secret is niet ingesteld!"
+            exit 1
+          fi
+
+          echo "URL: ${SUPABASE_URL}/rest/v1/rpc/cleanup_old_games"
+
+          response=$(curl -s -w "\nHTTP_CODE:%{http_code}" -X POST \
             "${SUPABASE_URL}/rest/v1/rpc/cleanup_old_games" \
             -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
             -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
             -H "Content-Type: application/json")
 
-          echo "Cleanup result: $response"
+          echo "Full response: $response"
+
+          # Extract HTTP code
+          http_code=$(echo "$response" | grep "HTTP_CODE:" | cut -d':' -f2)
+          body=$(echo "$response" | grep -v "HTTP_CODE:")
+
+          echo "HTTP Code: $http_code"
+          echo "Body: $body"
 
           # Check of het gelukt is
-          if echo "$response" | grep -q "deleted_games"; then
+          if echo "$body" | grep -q "deleted_games"; then
             echo "✅ Cleanup successful!"
-            echo "$response" | jq .
+            echo "$body" | jq . 2>/dev/null || echo "$body"
           else
-            echo "❌ Cleanup may have failed"
-            echo "$response"
+            echo "❌ Cleanup failed"
             exit 1
           fi
