@@ -1,8 +1,8 @@
 #!/bin/bash
 # =============================================================================
-# Deploy Script voor Boerenbridge naar Hetzner
+# Deploy Script voor Lekkerkaarten naar Hetzner
 # Run dit lokaal om de app te builden en uploaden
-# Usage: ./deploy.sh <server-ip-of-domein> [ssh-user]
+# Usage: ./deploy.sh [server-ip] [ssh-user]
 # =============================================================================
 
 set -e  # Stop bij errors
@@ -14,17 +14,10 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # =============================================================================
-# Argumenten checken
+# Server configuratie (Hetzner)
 # =============================================================================
-if [ -z "$1" ]; then
-    echo -e "${RED}Error: Geen server opgegeven${NC}"
-    echo "Usage: ./deploy.sh <server-ip-of-domein> [ssh-user]"
-    echo "Voorbeeld: ./deploy.sh 123.45.67.89"
-    echo "Voorbeeld: ./deploy.sh boerenbridge.nl root"
-    exit 1
-fi
-
-SERVER="$1"
+DEFAULT_SERVER="91.98.65.86"
+SERVER="${1:-$DEFAULT_SERVER}"
 SSH_USER="${2:-root}"
 REMOTE_PATH="/var/www/boerenbridge"
 
@@ -33,7 +26,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 cd "$PROJECT_DIR"
 
-echo -e "${GREEN}=== Boerenbridge Deployment ===${NC}"
+echo -e "${GREEN}=== Lekkerkaarten Deployment ===${NC}"
 echo -e "Server: ${YELLOW}$SERVER${NC}"
 echo -e "User: ${YELLOW}$SSH_USER${NC}"
 echo ""

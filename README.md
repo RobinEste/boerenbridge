@@ -145,8 +145,7 @@ certbot --nginx -d lekkerkaarten.nl -d www.lekkerkaarten.nl
 
 - [ ] DNS instellen bij Webreus
 - [ ] SSL certificaat installeren
-- [ ] Reconnect bij verloren verbinding
-- [ ] Bot overname bij disconnect
+- [ ] Bot overname activeren (code klaar, nog testen)
 - [ ] Sound effects
 - [ ] Statistieken en geschiedenis
 - [ ] Push notifications
@@ -163,6 +162,9 @@ certbot --nginx -d lekkerkaarten.nl -d www.lekkerkaarten.nl
 - [x] Trick result overlay
 - [x] Home screen met achtergrond
 - [x] Hetzner server deployment
+- [x] Warm look & feel (beige styling)
+- [x] Reconnect bij verloren verbinding
+- [x] Bot overname infrastructuur
 
 ## Supabase
 
