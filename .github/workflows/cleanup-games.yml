@@ -19,15 +19,20 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
-          set -x
-          echo "Starting cleanup at $(date)"
-          echo "SUPABASE_URL length: ${#SUPABASE_URL}"
-          echo "SUPABASE_SERVICE_ROLE_KEY length: ${#SUPABASE_SERVICE_ROLE_KEY}"
+          echo "🧹 Starting cleanup at $(date)"
 
-          # Simpele curl test
-          curl -v -X POST \
+          response=$(curl -s -X POST \
             "${SUPABASE_URL}/rest/v1/rpc/cleanup_old_games" \
             -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
             -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
             -H "Content-Type: application/json" \
-            -d '{}'
+            -d '{}')
+
+          echo "Result: $response"
+
+          if echo "$response" | grep -q "deleted_games"; then
+            echo "✅ Cleanup successful!"
+          else
+            echo "❌ Cleanup failed"
+            exit 1
+          fi
