@@ -1,50 +1,69 @@
-# 🃏 Boerenbridge
+# Boerenbridge
 
 Een Nederlandse multiplayer Boerenbridge app gebouwd met Flutter en Supabase.
 
+**Dit is een volledig werkende basisversie die iedereen mag forken en verder doorontwikkelen!**
+
+## Features
+
+- Multiplayer via 4-letter spelcode (bijv. "ABCD")
+- Realtime synchronisatie tussen spelers
+- 3 puntentellingsystemen: Basis, Vlaams, Nederlands
+- Configureerbaar aantal rondes
+- Visuele overlays voor biedoverzicht en slagresultaten
+- Responsive design voor web en mobiel
+
+## Demo
+
+Een live versie draait op: [lekkerkaarten.nl](http://lekkerkaarten.nl) (of http://91.98.65.86)
+
 ## Tech Stack
 
-| Component | Technologie | Waarom |
-|-----------|-------------|--------|
-| Frontend | Flutter | Cross-platform (iOS, Android, Web) met native performance |
-| Backend | Supabase | Gratis tier, ingebouwde Realtime, PostgreSQL |
-| State | Riverpod | Type-safe, testbaar, async support |
-| Auth | Supabase Auth | Anonieme accounts voor guests |
+| Component | Technologie |
+|-----------|-------------|
+| Frontend | Flutter (Web, iOS, Android) |
+| Backend | Supabase (Realtime, PostgreSQL) |
+| State | Riverpod |
+| Routing | GoRouter |
+| Auth | Supabase Auth (anoniem) |
 
 ## Project Structuur
 
 ```
 boerenbridge/
 ├── lib/
-│   ├── game/                    # Core game logic (pure Dart, geen dependencies)
+│   ├── game/                    # Core game logic (pure Dart)
 │   │   ├── models.dart          # Card, Player, Trick classes
-│   │   ├── rules.dart           # Configureerbare spelregels
+│   │   ├── rules.dart           # Spelregels en puntentelling
 │   │   └── game_state.dart      # State machine voor spelverloop
 │   │
 │   ├── services/
 │   │   └── supabase_service.dart # Supabase integratie
 │   │
-│   ├── providers/               # Riverpod providers (nog aan te maken)
+│   ├── providers/               # Riverpod state management
 │   │   ├── game_provider.dart
+│   │   ├── lobby_provider.dart
 │   │   └── auth_provider.dart
 │   │
-│   ├── screens/                 # UI schermen (nog aan te maken)
-│   │   ├── home_screen.dart
-│   │   ├── lobby_screen.dart
-│   │   └── game_screen.dart
+│   ├── screens/
+│   │   ├── home_screen.dart     # Startscherm met spelcode invoer
+│   │   ├── lobby_screen.dart    # Wachtruimte voor spelers
+│   │   └── game_screen.dart     # Speelscherm met kaarten
 │   │
-│   ├── widgets/                 # Herbruikbare widgets (nog aan te maken)
-│   │   ├── card_widget.dart
-│   │   ├── hand_widget.dart
-│   │   └── trick_widget.dart
+│   ├── widgets/                 # Herbruikbare UI componenten
+│   │   ├── playing_card.dart
+│   │   ├── player_hand.dart
+│   │   └── score_board.dart
 │   │
 │   └── main.dart
 │
 ├── supabase/
 │   └── schema.sql               # Database schema
 │
-├── test/
-│   └── game/                    # Unit tests voor game logic
+├── assets/
+│   └── images/                  # Afbeeldingen
+│
+├── test/                        # 118 unit tests
 │
 └── pubspec.yaml
 ```
@@ -53,39 +72,16 @@ boerenbridge/
 
 ### 1. Prerequisites
 
-```bash
-# Flutter installeren (als je dit nog niet hebt)
-# Zie: https://docs.flutter.dev/get-started/install
+- Flutter SDK (https://docs.flutter.dev/get-started/install)
+- Een Supabase account (gratis tier is voldoende)
 
-# Supabase CLI (optioneel, voor lokale development)
-brew install supabase/tap/supabase
-```
+### 2. Supabase Opzetten
 
-### 2. Supabase Project Opzetten
+1. Maak een project op [supabase.com](https://supabase.com)
+2. Voer `supabase/schema.sql` uit in de SQL Editor
+3. Kopieer je Project URL en anon key van Settings > API
 
-1. Ga naar [supabase.com](https://supabase.com) en maak een gratis account
-2. Maak een nieuw project aan
-3. Ga naar **SQL Editor** en voer `supabase/schema.sql` uit
-4. Ga naar **Settings > API** en kopieer:
-   - Project URL
-   - anon/public key
-
-### 3. Flutter Project Initialiseren
-
-```bash
-# Maak Flutter project (of clone deze repo)
-flutter create --org nl.jouwbedrijf boerenbridge
-cd boerenbridge
-
-# Voeg dependencies toe aan pubspec.yaml
-flutter pub add supabase_flutter
-flutter pub add flutter_riverpod
-flutter pub add go_router
-
-# Kopieer de game logic bestanden naar lib/
-```
-
-### 4. Configuratie
+### 3. Configuratie
 
 Maak `lib/config.dart`:
 
@@ -96,122 +92,84 @@ class Config {
 }
 ```
 
-> ⚠️ **Let op:** Voeg `lib/config.dart` toe aan `.gitignore`!
+> Voeg `lib/config.dart` toe aan `.gitignore`!
 
-### 5. Run
+### 4. Installeren en Starten
 
 ```bash
-flutter run
+flutter pub get
+flutter run -d chrome
 ```
 
-## Game Logic Overzicht
+## Puntentelling
 
-### Configureerbare Regels
+De app ondersteunt 3 systemen:
 
-De app ondersteunt diverse regelvarianten:
-
-```dart
-// Standaard Nederlands
-final rules = GameRules.dutch;
-
-// Vlaamse variant (andere puntentelling)
-final rules = GameRules.flemish;
-
-// Custom regels
-final rules = GameRules(
-  scoringSystem: ScoringSystem.withPenalty,
-  roundSequence: RoundSequence.ascending,
-  screwTheDealer: true,
-  zeroBidBonus: 5,
-);
-```
-
-### State Machine Fases
-
-```
-LOBBY → BIDDING → PLAYING → ROUND_END → (herhaal of) GAME_END
-         ↑___________|
-```
-
-### Multiplayer Flow
-
-1. **Host maakt spel** → krijgt 4-letter code (bijv. "ABCD")
-2. **Vrienden joinen** → voeren code in
-3. **Host start spel** → kaarten worden gedeeld
-4. **Realtime sync** → alle acties worden direct naar alle spelers gepusht
-
-## Development Roadmap
-
-### Fase 1: MVP (Week 1-2)
-- [x] Game logic in pure Dart
-- [x] Supabase schema
-- [x] Supabase service layer
-- [ ] Basis UI (lobby + spel scherm)
-- [ ] Kaart animaties
-
-### Fase 2: Polish (Week 3-4)
-- [ ] Reconnect logic (bij verloren verbinding)
-- [ ] Bot overname bij disconnect
-- [ ] Sound effects
-- [ ] Statistieken scherm
-
-### Fase 3: Commercieel (Week 5+)
-- [ ] Premium features (custom regels)
-- [ ] Remove ads voor premium
-- [ ] In-app purchase integratie
-- [ ] App Store / Play Store publicatie
+| Systeem | Goed geraden | Fout geraden |
+|---------|--------------|--------------|
+| **Basis** | 10 + (2 x slagen) | 0 punten |
+| **Vlaams** | 5 + slagen | 0 punten |
+| **Nederlands** | 10 + (2 x slagen) | -(2 x verschil) |
 
 ## Testing
 
 ```bash
-# Unit tests voor game logic
-flutter test test/game/
+# Alle tests uitvoeren
+flutter test
 
-# Integration tests
-flutter test integration_test/
+# Specifieke test groep
+flutter test test/game/
 ```
 
-### Voorbeeld test:
+## Deployment
 
-```dart
-void main() {
-  group('Boerenbridge Rules', () {
-    test('Screw the dealer prevents exact total', () {
-      final rules = GameRules.dutch;
-      
-      // 5 kaarten, 3 al geboden → deler mag geen 2 bieden
-      final allowed = rules.allowedBidsForDealer(5, 3);
-      
-      expect(allowed, isNot(contains(2)));
-      expect(allowed, contains(0));
-      expect(allowed, contains(1));
-      expect(allowed, contains(3));
-    });
-    
-    test('Standard scoring: correct bid', () {
-      final rules = GameRules.dutch;
-      
-      // Bod 3, gehaald 3 → 10 + 6 = 16 punten
-      final score = rules.calculateRoundScore(3, 3);
-      
-      expect(score, equals(16));
-    });
-  });
+### Flutter Web Build
+
+```bash
+flutter build web --release
+```
+
+De build staat in `build/web/` en kan naar elke webserver.
+
+### Nginx Voorbeeld
+
+```nginx
+server {
+    listen 80;
+    server_name jouwdomein.nl;
+    root /var/www/boerenbridge;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
 }
 ```
+
+## Doorontwikkelen
+
+Dit project is bedoeld als basis. Ideeen voor uitbreidingen:
+
+- [ ] Reconnect bij verloren verbinding
+- [ ] Bot overname bij disconnect
+- [ ] Sound effects
+- [ ] Statistieken en geschiedenis
+- [ ] Push notifications
+- [ ] Native iOS/Android apps
+- [ ] Toernooien modus
+- [ ] Custom thema's
 
 ## Contributing
 
 1. Fork de repo
-2. Maak een feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit je changes (`git commit -m 'Add amazing feature'`)
-4. Push naar de branch (`git push origin feature/amazing-feature`)
-5. Open een Pull Request
+2. Maak een feature branch (`git checkout -b feature/jouw-feature`)
+3. Commit je changes
+4. Push en open een Pull Request
 
 ## License
 
-MIT License - zie [LICENSE](LICENSE) voor details.
+MIT License - vrij te gebruiken en aan te passen.
 
 ---
 
-Gebouwd met ❤️ en Claude Code
+Gebouwd met Flutter, Supabase en Claude Code
