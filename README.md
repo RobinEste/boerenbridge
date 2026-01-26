@@ -108,8 +108,8 @@ De app ondersteunt 3 systemen:
 | Systeem | Goed geraden | Fout geraden |
 |---------|--------------|--------------|
 | **Basis** | 10 + (2 x slagen) | 0 punten |
-| **Vlaams** | 5 + slagen | 0 punten |
-| **Nederlands** | 10 + (2 x slagen) | -(2 x verschil) |
+| **Vlaams** | 10 + (3 x slagen) | 0 punten |
+| **Nederlands** | 10 + (3 x slagen) | -(3 x verschil) |
 
 ## Testing
 
