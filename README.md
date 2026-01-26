@@ -148,6 +148,25 @@ certbot renew
 certbot certificates
 ```
 
+### Firewall (ufw)
+
+Alleen essentiële poorten zijn open:
+
+| Poort | Dienst |
+|-------|--------|
+| 22 | SSH |
+| 80 | HTTP |
+| 443 | HTTPS |
+
+```bash
+# Status bekijken
+ufw status
+
+# Firewall beheren
+ufw allow <poort>/tcp
+ufw deny <poort>/tcp
+```
+
 ## Roadmap
 
 ### Te doen
