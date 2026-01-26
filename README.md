@@ -176,8 +176,6 @@ ufw deny <poort>/tcp
 ## Roadmap
 
 ### Te doen
-
-- [ ] Bot overname activeren (code klaar, nog testen)
 - [ ] Sound effects
 - [ ] Statistieken en geschiedenis
 - [ ] Push notifications
@@ -196,7 +194,7 @@ ufw deny <poort>/tcp
 - [x] Hetzner server deployment
 - [x] Warm look & feel (beige styling)
 - [x] Reconnect bij verloren verbinding
-- [x] Bot overname infrastructuur
+- [x] Bot overname (60s timeout, server tijd referentie)
 - [x] DNS configuratie (lekkerkaarten.nl)
 - [x] SSL certificaat (Let's Encrypt)
 - [x] CI/CD pipeline (GitHub Actions)
