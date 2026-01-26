@@ -3,8 +3,8 @@ import 'package:boerenbridge/game/rules.dart';
 
 void main() {
   group('ScoringSystem', () {
-    group('standard', () {
-      const rules = GameRules(scoringSystem: ScoringSystem.standard);
+    group('basis', () {
+      const rules = GameRules(scoringSystem: ScoringSystem.basis);
 
       test('correct bid gives 10 + 2*tricks', () {
         expect(rules.calculateRoundScore(0, 0), equals(10));
@@ -20,8 +20,8 @@ void main() {
       });
     });
 
-    group('flemish', () {
-      const rules = GameRules(scoringSystem: ScoringSystem.flemish);
+    group('vlaams', () {
+      const rules = GameRules(scoringSystem: ScoringSystem.vlaams);
 
       test('correct bid gives 10 + 3*tricks', () {
         expect(rules.calculateRoundScore(0, 0), equals(10));
@@ -34,38 +34,28 @@ void main() {
       });
     });
 
-    group('withPenalty', () {
-      const rules = GameRules(scoringSystem: ScoringSystem.withPenalty);
+    group('nederlands', () {
+      const rules = GameRules(scoringSystem: ScoringSystem.nederlands);
 
-      test('correct bid gives 10 + 2*tricks', () {
-        expect(rules.calculateRoundScore(3, 3), equals(16));
-      });
-
-      test('wrong bid gives -2 per difference', () {
-        expect(rules.calculateRoundScore(3, 1), equals(-4)); // 2 off * -2
-        expect(rules.calculateRoundScore(0, 2), equals(-4)); // 2 off * -2
-        expect(rules.calculateRoundScore(5, 2), equals(-6)); // 3 off * -2
-      });
-    });
-
-    group('dutchWithPenalty', () {
-      const rules = GameRules(scoringSystem: ScoringSystem.dutchWithPenalty);
-
-      test('correct bid gives 10 + 2*tricks', () {
-        expect(rules.calculateRoundScore(3, 3), equals(16));
+      test('correct bid gives 10 + 3*tricks', () {
+        expect(rules.calculateRoundScore(0, 0), equals(10));
+        expect(rules.calculateRoundScore(1, 1), equals(13));
+        expect(rules.calculateRoundScore(3, 3), equals(19));
+        expect(rules.calculateRoundScore(5, 5), equals(25));
       });
 
       test('wrong bid gives -3 per difference', () {
         expect(rules.calculateRoundScore(3, 1), equals(-6)); // 2 off * -3
         expect(rules.calculateRoundScore(0, 2), equals(-6)); // 2 off * -3
         expect(rules.calculateRoundScore(5, 2), equals(-9)); // 3 off * -3
+        expect(rules.calculateRoundScore(1, 0), equals(-3)); // 1 off * -3
       });
     });
 
     group('zeroBidBonus', () {
       test('adds bonus when bidding and making 0', () {
         const rules = GameRules(
-          scoringSystem: ScoringSystem.standard,
+          scoringSystem: ScoringSystem.basis,
           zeroBidBonus: 5,
         );
 
@@ -163,7 +153,7 @@ void main() {
     group('serialization', () {
       test('toJson includes all fields', () {
         const rules = GameRules(
-          scoringSystem: ScoringSystem.dutchWithPenalty,
+          scoringSystem: ScoringSystem.nederlands,
           roundSequence: RoundSequence.ascending,
           maxRounds: 10,
           screwTheDealer: false,
@@ -173,7 +163,7 @@ void main() {
 
         final json = rules.toJson();
 
-        expect(json['scoring_system'], equals(ScoringSystem.dutchWithPenalty.index));
+        expect(json['scoring_system'], equals(ScoringSystem.nederlands.index));
         expect(json['round_sequence'], equals(RoundSequence.ascending.index));
         expect(json['max_rounds'], equals(10));
         expect(json['screw_the_dealer'], isFalse);
@@ -183,7 +173,7 @@ void main() {
 
       test('fromJson restores all fields', () {
         final json = {
-          'scoring_system': ScoringSystem.dutchWithPenalty.index,
+          'scoring_system': ScoringSystem.nederlands.index,
           'round_sequence': RoundSequence.ascending.index,
           'max_rounds': 10,
           'screw_the_dealer': false,
@@ -193,7 +183,7 @@ void main() {
 
         final rules = GameRules.fromJson(json);
 
-        expect(rules.scoringSystem, equals(ScoringSystem.dutchWithPenalty));
+        expect(rules.scoringSystem, equals(ScoringSystem.nederlands));
         expect(rules.roundSequence, equals(RoundSequence.ascending));
         expect(rules.maxRounds, equals(10));
         expect(rules.screwTheDealer, isFalse);
@@ -203,7 +193,7 @@ void main() {
 
       test('roundtrip preserves rules', () {
         const original = GameRules(
-          scoringSystem: ScoringSystem.flemish,
+          scoringSystem: ScoringSystem.vlaams,
           maxRounds: 15,
           zeroBidBonus: 3,
         );
@@ -220,16 +210,16 @@ void main() {
     group('copyWith', () {
       test('creates copy with changed fields', () {
         const original = GameRules(
-          scoringSystem: ScoringSystem.standard,
+          scoringSystem: ScoringSystem.basis,
           maxRounds: 10,
         );
 
         final modified = original.copyWith(
-          scoringSystem: ScoringSystem.dutchWithPenalty,
+          scoringSystem: ScoringSystem.nederlands,
           maxRounds: 5,
         );
 
-        expect(modified.scoringSystem, equals(ScoringSystem.dutchWithPenalty));
+        expect(modified.scoringSystem, equals(ScoringSystem.nederlands));
         expect(modified.maxRounds, equals(5));
         // Unchanged fields preserved
         expect(modified.screwTheDealer, equals(original.screwTheDealer));
@@ -239,14 +229,21 @@ void main() {
 
   group('preset rules', () {
     test('dutch has correct defaults', () {
-      expect(GameRules.dutch.scoringSystem, equals(ScoringSystem.standard));
+      expect(GameRules.dutch.scoringSystem, equals(ScoringSystem.nederlands));
       expect(GameRules.dutch.screwTheDealer, isTrue);
       expect(GameRules.dutch.allowZeroBid, isTrue);
     });
 
     test('flemish has correct defaults', () {
-      expect(GameRules.flemish.scoringSystem, equals(ScoringSystem.flemish));
-      expect(GameRules.flemish.zeroBidBonus, equals(5));
+      expect(GameRules.flemish.scoringSystem, equals(ScoringSystem.vlaams));
+      expect(GameRules.flemish.screwTheDealer, isTrue);
+      expect(GameRules.flemish.allowZeroBid, isTrue);
+    });
+
+    test('basic has correct defaults', () {
+      expect(GameRules.basic.scoringSystem, equals(ScoringSystem.basis));
+      expect(GameRules.basic.screwTheDealer, isTrue);
+      expect(GameRules.basic.allowZeroBid, isTrue);
     });
   });
 }

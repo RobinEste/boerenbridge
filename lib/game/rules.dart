@@ -6,37 +6,27 @@
 // =============================================================================
 
 enum ScoringSystem {
-  /// Standaard: +10 voor juist bod, +2 per slag, 0 bij fout
-  standard,
+  /// Basis: +10 voor juist bod, +2 per slag, 0 bij fout
+  basis,
 
-  /// Vlaams: +10 voor juist bod, +3 per slag
-  flemish,
+  /// Vlaams: +10 voor juist bod, +3 per slag, 0 bij fout
+  vlaams,
 
-  /// Bonus alleen: Alleen punten bij juist bod
-  bonusOnly,
-
-  /// Met penalty: Strafpunten bij fout bod (-2 per slag verschil)
-  withPenalty,
-
-  /// Nederlands met strafpunten: +10/+2 bij juist, -3 per slag verschil bij fout
-  dutchWithPenalty,
+  /// Nederlands: +10 voor juist bod, +3 per slag, -3 per slag verschil bij fout
+  nederlands,
 }
 
 extension ScoringSystemExtension on ScoringSystem {
   String get displayName => switch (this) {
-    ScoringSystem.standard => 'Standaard (+10/+2)',
-    ScoringSystem.flemish => 'Vlaams (+10/+3)',
-    ScoringSystem.bonusOnly => 'Alleen bonus',
-    ScoringSystem.withPenalty => 'Met strafpunten (-2)',
-    ScoringSystem.dutchWithPenalty => 'Nederlands met straf (-3)',
+    ScoringSystem.basis => 'Basis (+10, +2 per slag)',
+    ScoringSystem.vlaams => 'Vlaams (+10, +3 per slag)',
+    ScoringSystem.nederlands => 'Nederlands (+10, +3 of -3)',
   };
 
   String get description => switch (this) {
-    ScoringSystem.standard => '10 punten voor juist bod, +2 per behaalde slag, 0 bij fout',
-    ScoringSystem.flemish => '10 punten voor juist bod, +3 per behaalde slag',
-    ScoringSystem.bonusOnly => '10 punten voor juist bod, 0 bij fout',
-    ScoringSystem.withPenalty => '10 + 2×slag bij juist, -2×verschil bij fout',
-    ScoringSystem.dutchWithPenalty => '10 + 2×slag bij juist, -3×verschil bij fout',
+    ScoringSystem.basis => 'Goed: 10 + 2×slag. Fout: 0 punten',
+    ScoringSystem.vlaams => 'Goed: 10 + 3×slag. Fout: 0 punten',
+    ScoringSystem.nederlands => 'Goed: 10 + 3×slag. Fout: -3×verschil',
   };
 }
 
@@ -137,7 +127,7 @@ class GameRules {
   final int? maxRounds;
 
   const GameRules({
-    this.scoringSystem = ScoringSystem.standard,
+    this.scoringSystem = ScoringSystem.basis,
     this.roundSequence = RoundSequence.pyramid,
     this.customRounds,
     this.trumpDetermination = TrumpDetermination.topCard,
@@ -148,27 +138,26 @@ class GameRules {
     this.maxRounds,
   });
   
-  /// Standaard Nederlandse regels
+  /// Standaard Nederlandse regels (+10, +3 of -3)
   static const dutch = GameRules(
-    scoringSystem: ScoringSystem.standard,
+    scoringSystem: ScoringSystem.nederlands,
     roundSequence: RoundSequence.pyramid,
     screwTheDealer: true,
     allowZeroBid: true,
   );
-  
-  /// Vlaamse variant
+
+  /// Vlaamse variant (+10, +3, geen straf)
   static const flemish = GameRules(
-    scoringSystem: ScoringSystem.flemish,
+    scoringSystem: ScoringSystem.vlaams,
     roundSequence: RoundSequence.pyramid,
     screwTheDealer: true,
     allowZeroBid: true,
-    zeroBidBonus: 5,
   );
-  
-  /// Snelle variant (alleen oplopend)
-  static const quick = GameRules(
-    scoringSystem: ScoringSystem.standard,
-    roundSequence: RoundSequence.ascending,
+
+  /// Basis variant (+10, +2, geen straf)
+  static const basic = GameRules(
+    scoringSystem: ScoringSystem.basis,
+    roundSequence: RoundSequence.pyramid,
     screwTheDealer: true,
     allowZeroBid: true,
   );
@@ -179,18 +168,14 @@ class GameRules {
     final difference = (bid - tricksTaken).abs();
 
     return switch (scoringSystem) {
-      ScoringSystem.standard => correct
+      ScoringSystem.basis => correct
           ? 10 + (tricksTaken * 2)
           : 0,
-      ScoringSystem.flemish => correct
+      ScoringSystem.vlaams => correct
           ? 10 + (tricksTaken * 3)
           : 0,
-      ScoringSystem.bonusOnly => correct ? 10 : 0,
-      ScoringSystem.withPenalty => correct
-          ? 10 + (tricksTaken * 2)
-          : -difference * 2,
-      ScoringSystem.dutchWithPenalty => correct
-          ? 10 + (tricksTaken * 2)
+      ScoringSystem.nederlands => correct
+          ? 10 + (tricksTaken * 3)
           : -difference * 3,
     } + (correct && bid == 0 ? zeroBidBonus : 0);
   }

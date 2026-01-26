@@ -267,7 +267,9 @@ void main() {
   group('Round end phase', () {
     testWidgets('shows player scores', (tester) async {
       final players = [
-        models.Player(id: 'p1', name: 'Alice', bid: 2, tricksTaken: 2, totalScore: 14),
+        // With nederlands scoring: bid=2, tricks=2 → 10 + (2*3) = +16
+        models.Player(id: 'p1', name: 'Alice', bid: 2, tricksTaken: 2, totalScore: 16),
+        // With nederlands scoring: bid=1, tricks=0 → -1*3 = -3
         models.Player(id: 'p2', name: 'Bob', bid: 1, tricksTaken: 0, totalScore: -3),
       ];
 
@@ -276,7 +278,7 @@ void main() {
           home: Scaffold(
             body: _TestRoundScores(
               players: players,
-              rules: const GameRules(scoringSystem: ScoringSystem.dutchWithPenalty),
+              rules: const GameRules(scoringSystem: ScoringSystem.nederlands),
             ),
           ),
         ),
@@ -284,7 +286,7 @@ void main() {
 
       expect(find.text('Alice'), findsOneWidget);
       expect(find.text('Bob'), findsOneWidget);
-      expect(find.textContaining('+14'), findsOneWidget);
+      expect(find.textContaining('+16'), findsOneWidget);
       expect(find.textContaining('-3'), findsOneWidget);
     });
 

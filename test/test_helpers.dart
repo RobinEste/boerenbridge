@@ -23,7 +23,7 @@ GameState createGameStateInPhase({
   GamePhase phase = GamePhase.lobby,
   int playerCount = 3,
   int maxRounds = 3,
-  ScoringSystem scoringSystem = ScoringSystem.standard,
+  ScoringSystem scoringSystem = ScoringSystem.basis,
 }) {
   final players = createTestPlayers(count: playerCount);
   final game = GameState(

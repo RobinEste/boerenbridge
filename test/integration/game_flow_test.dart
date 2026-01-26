@@ -20,7 +20,7 @@ void main() {
       game = GameState(
         gameId: 'integration-test',
         rules: const GameRules(
-          scoringSystem: ScoringSystem.dutchWithPenalty,
+          scoringSystem: ScoringSystem.nederlands,
           maxRounds: 3, // Short game for testing
         ),
         players: players,

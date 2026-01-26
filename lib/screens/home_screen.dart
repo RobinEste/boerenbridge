@@ -62,7 +62,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Future<GameRules?> _showGameSettingsDialog() async {
-    ScoringSystem selectedScoring = ScoringSystem.dutchWithPenalty;
+    ScoringSystem selectedScoring = ScoringSystem.nederlands;
     int? selectedMaxRounds;
 
     return showDialog<GameRules>(
