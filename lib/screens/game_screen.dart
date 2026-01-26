@@ -9,6 +9,7 @@ import '../game/models.dart' as models;
 import '../providers/game_provider.dart';
 import '../services/connection_service.dart';
 import '../theme/app_colors.dart';
+import '../widgets/app_logo.dart';
 import '../widgets/connection_overlay.dart';
 
 class GameScreen extends ConsumerStatefulWidget {
@@ -214,7 +215,18 @@ class _GameScreenState extends ConsumerState<GameScreen> {
           icon: const Icon(Icons.close),
           onPressed: _leaveGame,
         ),
-        title: Text(_getPhaseTitle(game.phase)),
+        title: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const AppLogo(height: 28),
+            Text(
+              _getPhaseTitle(game.phase),
+              style: const TextStyle(fontSize: 12),
+            ),
+          ],
+        ),
+        centerTitle: true,
+        toolbarHeight: 64,
         actions: [
           IconButton(
             icon: const Icon(Icons.leaderboard),

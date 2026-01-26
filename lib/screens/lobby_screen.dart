@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../config.dart' show AppConfig;
 import '../providers/lobby_provider.dart';
 import '../theme/app_colors.dart';
+import '../widgets/app_logo.dart';
 
 class LobbyScreen extends ConsumerStatefulWidget {
   final String joinCode;
@@ -87,7 +88,8 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
           icon: const Icon(Icons.arrow_back),
           onPressed: _leaveLobby,
         ),
-        title: const Text('Wachtkamer'),
+        title: const AppLogo(height: 36),
+        centerTitle: true,
       ),
       body: SafeArea(
         child: Padding(
