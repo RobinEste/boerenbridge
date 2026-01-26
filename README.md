@@ -56,7 +56,13 @@ lekkerkaarten/
 │
 ├── assets/
 │   └── images/
-│       └── home_banner.jpeg     # Homepagina achtergrond
+│       ├── home_banner.jpeg     # Homepagina achtergrond
+│       └── logo.png             # Boerenbridge logo
+│
+├── web/
+│   ├── index.html               # Meta tags, Open Graph
+│   ├── manifest.json            # PWA configuratie
+│   └── favicon.png              # Favicon (B icoon)
 │
 ├── test/                        # 118 unit tests
 │   └── game/
@@ -194,6 +200,10 @@ ufw deny <poort>/tcp
 - [x] DNS configuratie (lekkerkaarten.nl)
 - [x] SSL certificaat (Let's Encrypt)
 - [x] CI/CD pipeline (GitHub Actions)
+- [x] Firewall (ufw)
+- [x] Logo in AppBar
+- [x] Favicon (B icoon)
+- [x] Link preview / Open Graph tags
 
 ## Supabase
 
