@@ -1,21 +1,11 @@
-# Boerenbridge
+# Lekkerkaarten
 
-Een Nederlandse multiplayer Boerenbridge app gebouwd met Flutter en Supabase.
+Multiplayer Boerenbridge app - commerciele versie.
 
-**Dit is een volledig werkende basisversie die iedereen mag forken en verder doorontwikkelen!**
+## Live
 
-## Features
-
-- Multiplayer via 4-letter spelcode (bijv. "ABCD")
-- Realtime synchronisatie tussen spelers
-- 3 puntentellingsystemen: Basis, Vlaams, Nederlands
-- Configureerbaar aantal rondes
-- Visuele overlays voor biedoverzicht en slagresultaten
-- Responsive design voor web en mobiel
-
-## Demo
-
-Een live versie draait op: [lekkerkaarten.nl](http://lekkerkaarten.nl) (of http://91.98.65.86)
+- **Productie**: [lekkerkaarten.nl](http://lekkerkaarten.nl)
+- **Server**: 91.98.65.86 (Hetzner)
 
 ## Tech Stack
 
@@ -26,84 +16,90 @@ Een live versie draait op: [lekkerkaarten.nl](http://lekkerkaarten.nl) (of http:
 | State | Riverpod |
 | Routing | GoRouter |
 | Auth | Supabase Auth (anoniem) |
+| Hosting | Hetzner + Nginx |
 
 ## Project Structuur
 
 ```
-boerenbridge/
+lekkerkaarten/
 ├── lib/
 │   ├── game/                    # Core game logic (pure Dart)
-│   │   ├── models.dart          # Card, Player, Trick classes
-│   │   ├── rules.dart           # Spelregels en puntentelling
-│   │   └── game_state.dart      # State machine voor spelverloop
+│   │   ├── models.dart          # Card, Player, Trick, PlayedCard classes
+│   │   ├── rules.dart           # GameRules, ScoringSystem enum
+│   │   └── game_state.dart      # GameState, GamePhase enum
 │   │
 │   ├── services/
-│   │   └── supabase_service.dart # Supabase integratie
+│   │   └── supabase_service.dart # Supabase CRUD en realtime subscriptions
 │   │
-│   ├── providers/               # Riverpod state management
-│   │   ├── game_provider.dart
-│   │   ├── lobby_provider.dart
-│   │   └── auth_provider.dart
+│   ├── providers/
+│   │   ├── game_provider.dart   # Game state management
+│   │   ├── lobby_provider.dart  # Lobby/join logic
+│   │   └── auth_provider.dart   # Anonieme auth + naam opslag
 │   │
 │   ├── screens/
-│   │   ├── home_screen.dart     # Startscherm met spelcode invoer
+│   │   ├── home_screen.dart     # Startscherm (naam, code invoer)
 │   │   ├── lobby_screen.dart    # Wachtruimte voor spelers
-│   │   └── game_screen.dart     # Speelscherm met kaarten
+│   │   └── game_screen.dart     # Hoofdscherm tijdens spel
 │   │
-│   ├── widgets/                 # Herbruikbare UI componenten
-│   │   ├── playing_card.dart
-│   │   ├── player_hand.dart
-│   │   └── score_board.dart
+│   ├── widgets/
+│   │   ├── playing_card.dart    # Speelkaart widget
+│   │   ├── player_hand.dart     # Hand met kaarten
+│   │   ├── score_board.dart     # Scorebord
+│   │   └── trick_area.dart      # Huidige slag weergave
 │   │
-│   └── main.dart
+│   ├── config.dart              # Supabase credentials (NIET in git!)
+│   └── main.dart                # App entry point + routing
 │
 ├── supabase/
 │   └── schema.sql               # Database schema
 │
 ├── assets/
-│   └── images/                  # Afbeeldingen
+│   └── images/
+│       └── home_banner.jpeg     # Homepagina achtergrond
 │
 ├── test/                        # 118 unit tests
+│   └── game/
+│       ├── game_state_test.dart
+│       ├── rules_test.dart
+│       └── models_test.dart
 │
+├── bb-aan                       # Start script (flutter run -d chrome)
+├── bb-uit                       # Stop script
 └── pubspec.yaml
 ```
 
-## Quick Start
+## Development
 
-### 1. Prerequisites
-
-- Flutter SDK (https://docs.flutter.dev/get-started/install)
-- Een Supabase account (gratis tier is voldoende)
-
-### 2. Supabase Opzetten
-
-1. Maak een project op [supabase.com](https://supabase.com)
-2. Voer `supabase/schema.sql` uit in de SQL Editor
-3. Kopieer je Project URL en anon key van Settings > API
-
-### 3. Configuratie
-
-Maak `lib/config.dart`:
-
-```dart
-class Config {
-  static const supabaseUrl = 'https://YOUR_PROJECT.supabase.co';
-  static const supabaseAnonKey = 'YOUR_ANON_KEY';
-}
-```
-
-> Voeg `lib/config.dart` toe aan `.gitignore`!
-
-### 4. Installeren en Starten
+### Starten
 
 ```bash
-flutter pub get
-flutter run -d chrome
+./bb-aan                    # Of: flutter run -d chrome
+```
+
+### Stoppen
+
+```bash
+./bb-uit
+```
+
+### Tests
+
+```bash
+flutter test                # Alle tests (118)
+flutter test test/game/     # Alleen game logic
+```
+
+### Build & Deploy
+
+```bash
+# Build
+flutter build web --release
+
+# Deploy naar server
+scp -r build/web/* root@91.98.65.86:/var/www/boerenbridge/
 ```
 
 ## Puntentelling
-
-De app ondersteunt 3 systemen:
 
 | Systeem | Goed geraden | Fout geraden |
 |---------|--------------|--------------|
@@ -111,32 +107,22 @@ De app ondersteunt 3 systemen:
 | **Vlaams** | 5 + slagen | 0 punten |
 | **Nederlands** | 10 + (2 x slagen) | -(2 x verschil) |
 
-## Testing
+## Server Configuratie
+
+### SSH Toegang
 
 ```bash
-# Alle tests uitvoeren
-flutter test
-
-# Specifieke test groep
-flutter test test/game/
+ssh root@91.98.65.86
 ```
 
-## Deployment
+### Nginx Config
 
-### Flutter Web Build
-
-```bash
-flutter build web --release
-```
-
-De build staat in `build/web/` en kan naar elke webserver.
-
-### Nginx Voorbeeld
+Locatie: `/etc/nginx/sites-available/boerenbridge`
 
 ```nginx
 server {
     listen 80;
-    server_name jouwdomein.nl;
+    server_name lekkerkaarten.nl www.lekkerkaarten.nl _;
     root /var/www/boerenbridge;
     index index.html;
 
@@ -146,30 +132,44 @@ server {
 }
 ```
 
-## Doorontwikkelen
+### SSL (nog te doen)
 
-Dit project is bedoeld als basis. Ideeen voor uitbreidingen:
+```bash
+apt install certbot python3-certbot-nginx -y
+certbot --nginx -d lekkerkaarten.nl -d www.lekkerkaarten.nl
+```
 
+## Roadmap
+
+### Te doen
+
+- [ ] DNS instellen bij Webreus
+- [ ] SSL certificaat installeren
 - [ ] Reconnect bij verloren verbinding
 - [ ] Bot overname bij disconnect
 - [ ] Sound effects
 - [ ] Statistieken en geschiedenis
 - [ ] Push notifications
-- [ ] Native iOS/Android apps
-- [ ] Toernooien modus
-- [ ] Custom thema's
+- [ ] Native iOS/Android builds
+- [ ] App Store / Play Store publicatie
 
-## Contributing
+### Voltooid
 
-1. Fork de repo
-2. Maak een feature branch (`git checkout -b feature/jouw-feature`)
-3. Commit je changes
-4. Push en open een Pull Request
+- [x] Core game logic met tests
+- [x] Multiplayer via Supabase realtime
+- [x] 3 scoring systemen
+- [x] Configureerbaar aantal rondes
+- [x] Bid summary overlay
+- [x] Trick result overlay
+- [x] Home screen met achtergrond
+- [x] Hetzner server deployment
 
-## License
+## Supabase
 
-MIT License - vrij te gebruiken en aan te passen.
+- **Project**: Boerenbridge
+- **Region**: eu-central-1 (Frankfurt)
+- **Dashboard**: https://supabase.com/dashboard
 
 ---
 
-Gebouwd met Flutter, Supabase en Claude Code
+Lekkerkaarten - Alle rechten voorbehouden
