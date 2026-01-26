@@ -16,12 +16,17 @@ class BotService {
   static const Duration _botCheckInterval = Duration(seconds: 5);
   static const Duration _disconnectTimeout = Duration(seconds: 60);
 
+  // TODO: Zet op true wanneer bot functionaliteit klaar is voor productie
+  static const bool _botEnabled = false;
+
   BotService({
     required this.gameId,
   }) : _supabase = SupabaseService.instance;
 
   /// Start de bot service - controleert periodiek of bots moeten ingrijpen
   void start() {
+    if (!_botEnabled) return; // Bot tijdelijk uitgeschakeld
+
     _checkTimer?.cancel();
     _checkTimer = Timer.periodic(_botCheckInterval, (_) => _checkForBotActions());
   }
@@ -61,6 +66,12 @@ class BotService {
         orElse: () => currentPlayer,
       );
 
+      // NOOIT bot spelen voor de huidige gebruiker (die speelt zelf)
+      final myUserId = _supabase.currentUserId;
+      if (currentPlayer.isCurrentUser(myUserId)) {
+        return;
+      }
+
       if (_shouldBotPlay(dbCurrentPlayer)) {
         await _performBotAction(state, currentPlayer);
       }
@@ -88,9 +99,14 @@ class BotService {
 
   /// Bepaal of bot moet spelen voor deze speler
   bool _shouldBotPlay(Player player) {
+    // Geen lastSeenAt = speler is nieuw of heartbeat nog niet gestart, GEEN bot
     if (player.lastSeenAt == null) return false;
 
     final timeSinceLastSeen = DateTime.now().difference(player.lastSeenAt!);
+
+    // Extra safeguard: als lastSeenAt in de toekomst ligt (clock skew), geen bot
+    if (timeSinceLastSeen.isNegative) return false;
+
     return timeSinceLastSeen > _disconnectTimeout;
   }
 
