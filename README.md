@@ -104,8 +104,8 @@ scp -r build/web/* root@91.98.65.86:/var/www/boerenbridge/
 | Systeem | Goed geraden | Fout geraden |
 |---------|--------------|--------------|
 | **Basis** | 10 + (2 x slagen) | 0 punten |
-| **Vlaams** | 5 + slagen | 0 punten |
-| **Nederlands** | 10 + (2 x slagen) | -(2 x verschil) |
+| **Vlaams** | 10 + (3 x slagen) | 0 punten |
+| **Nederlands** | 10 + (3 x slagen) | -(3 x verschil) |
 
 ## Server Configuratie
 
