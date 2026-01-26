@@ -16,8 +16,8 @@ class BotService {
   static const Duration _botCheckInterval = Duration(seconds: 5);
   static const Duration _disconnectTimeout = Duration(seconds: 60);
 
-  // TODO: Zet op true wanneer bot functionaliteit klaar is voor productie
-  static const bool _botEnabled = false;
+  // Bot feature toggle
+  static const bool _botEnabled = true;
 
   BotService({
     required this.gameId,
@@ -72,7 +72,8 @@ class BotService {
         return;
       }
 
-      if (_shouldBotPlay(dbCurrentPlayer)) {
+      final shouldPlay = _shouldBotPlay(dbCurrentPlayer);
+      if (shouldPlay) {
         await _performBotAction(state, currentPlayer);
       }
     } catch (e) {
@@ -82,9 +83,22 @@ class BotService {
     }
   }
 
+  // Referentie tijd van de server (meest recente heartbeat)
+  DateTime? _serverTimeReference;
+
   /// Update bot controlled status gebaseerd op last seen timestamps
   void _updateBotStatus(GameState state, List<Player> dbPlayers) {
-    final now = DateTime.now();
+    // Bepaal server tijd referentie: de meest recente lastSeenAt van alle spelers
+    // Dit voorkomt problemen met clock skew tussen client en server
+    DateTime? mostRecentSeen;
+    for (final p in dbPlayers) {
+      if (p.lastSeenAt != null) {
+        if (mostRecentSeen == null || p.lastSeenAt!.isAfter(mostRecentSeen)) {
+          mostRecentSeen = p.lastSeenAt;
+        }
+      }
+    }
+    _serverTimeReference = mostRecentSeen;
 
     for (final player in state.players) {
       final dbPlayer = dbPlayers.firstWhere(
@@ -102,11 +116,17 @@ class BotService {
     // Geen lastSeenAt = speler is nieuw of heartbeat nog niet gestart, GEEN bot
     if (player.lastSeenAt == null) return false;
 
-    final timeSinceLastSeen = DateTime.now().difference(player.lastSeenAt!);
+    // Geen server referentie = kunnen niet vergelijken, GEEN bot
+    if (_serverTimeReference == null) return false;
 
-    // Extra safeguard: als lastSeenAt in de toekomst ligt (clock skew), geen bot
-    if (timeSinceLastSeen.isNegative) return false;
+    // Gebruik de meest recente heartbeat als "nu" referentie
+    // Dit voorkomt clock skew problemen tussen client en server
+    final serverNow = _serverTimeReference!;
+    final lastSeen = player.lastSeenAt!;
+    final timeSinceLastSeen = serverNow.difference(lastSeen);
 
+    // Als de speler de meest recente is, is het verschil 0 of zeer klein
+    // Als de speler lang niet gezien is, is het verschil groot
     return timeSinceLastSeen > _disconnectTimeout;
   }
 

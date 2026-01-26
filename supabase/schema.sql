@@ -121,8 +121,8 @@ CREATE TABLE game_actions (
     player_id UUID NOT NULL REFERENCES game_players(id) ON DELETE CASCADE,
     
     -- Type actie
-    action_type VARCHAR(30) NOT NULL 
-        CHECK (action_type IN ('join', 'leave', 'start', 'bid', 'play_card', 'next_round')),
+    action_type VARCHAR(30) NOT NULL
+        CHECK (action_type IN ('join', 'leave', 'start', 'bid', 'play_card', 'next_round', 'bot_bid', 'bot_play_card')),
     
     -- Actie details (bijv. welke kaart gespeeld)
     payload JSONB,
@@ -169,13 +169,53 @@ CREATE POLICY "Players in game can view all players" ON game_players
 CREATE POLICY "Anyone can join a game" ON game_players
     FOR INSERT WITH CHECK (true);
 
+CREATE POLICY "Players can update their own record" ON game_players
+    FOR UPDATE USING (user_id = auth.uid());
+
+CREATE POLICY "Host can update players in their game" ON game_players
+    FOR UPDATE USING (
+        EXISTS (
+            SELECT 1 FROM games
+            WHERE games.id = game_players.game_id
+            AND games.host_id = auth.uid()
+        )
+    );
+
 -- Game state: alleen spelers in het spel
 CREATE POLICY "Players can view game state" ON game_state
     FOR SELECT USING (
         EXISTS (
-            SELECT 1 FROM game_players 
-            WHERE game_id = game_state.game_id 
+            SELECT 1 FROM game_players
+            WHERE game_id = game_state.game_id
             AND (user_id = auth.uid() OR guest_id IS NOT NULL)
+        )
+    );
+
+CREATE POLICY "Players can update game state" ON game_state
+    FOR UPDATE USING (
+        EXISTS (
+            SELECT 1 FROM game_players
+            WHERE game_id = game_state.game_id
+            AND user_id = auth.uid()
+        )
+    );
+
+-- Game actions: spelers kunnen acties loggen en bekijken
+CREATE POLICY "Players can log actions" ON game_actions
+    FOR INSERT WITH CHECK (
+        EXISTS (
+            SELECT 1 FROM game_players
+            WHERE game_players.game_id = game_actions.game_id
+            AND game_players.user_id = auth.uid()
+        )
+    );
+
+CREATE POLICY "Players can view game actions" ON game_actions
+    FOR SELECT USING (
+        EXISTS (
+            SELECT 1 FROM game_players
+            WHERE game_players.game_id = game_actions.game_id
+            AND game_players.user_id = auth.uid()
         )
     );
 
