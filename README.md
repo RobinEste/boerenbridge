@@ -4,8 +4,9 @@ Multiplayer Boerenbridge app - commerciele versie.
 
 ## Live
 
-- **Productie**: [lekkerkaarten.nl](http://lekkerkaarten.nl)
+- **Productie**: [lekkerkaarten.nl](https://lekkerkaarten.nl)
 - **Server**: 91.98.65.86 (Hetzner)
+- **SSL**: Let's Encrypt (auto-renewal)
 
 ## Tech Stack
 
@@ -91,11 +92,14 @@ flutter test test/game/     # Alleen game logic
 
 ### Build & Deploy
 
-```bash
-# Build
-flutter build web --release
+Deployment gaat automatisch via GitHub Actions bij push naar `main`.
 
-# Deploy naar server
+```bash
+# Handmatig deployen (indien nodig)
+./deploy/deploy.sh
+
+# Of handmatig
+flutter build web --release
 scp -r build/web/* root@91.98.65.86:/var/www/boerenbridge/
 ```
 
@@ -132,19 +136,22 @@ server {
 }
 ```
 
-### SSL (nog te doen)
+### SSL
+
+SSL is geconfigureerd met Let's Encrypt. Certificaat wordt automatisch vernieuwd.
 
 ```bash
-apt install certbot python3-certbot-nginx -y
-certbot --nginx -d lekkerkaarten.nl -d www.lekkerkaarten.nl
+# Handmatig vernieuwen (indien nodig)
+certbot renew
+
+# Status checken
+certbot certificates
 ```
 
 ## Roadmap
 
 ### Te doen
 
-- [ ] DNS instellen bij Webreus
-- [ ] SSL certificaat installeren
 - [ ] Bot overname activeren (code klaar, nog testen)
 - [ ] Sound effects
 - [ ] Statistieken en geschiedenis
@@ -165,6 +172,9 @@ certbot --nginx -d lekkerkaarten.nl -d www.lekkerkaarten.nl
 - [x] Warm look & feel (beige styling)
 - [x] Reconnect bij verloren verbinding
 - [x] Bot overname infrastructuur
+- [x] DNS configuratie (lekkerkaarten.nl)
+- [x] SSL certificaat (Let's Encrypt)
+- [x] CI/CD pipeline (GitHub Actions)
 
 ## Supabase
 
