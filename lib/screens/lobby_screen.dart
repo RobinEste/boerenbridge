@@ -88,8 +88,17 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
           icon: const Icon(Icons.arrow_back),
           onPressed: _leaveLobby,
         ),
-        title: const AppLogo(height: 36),
-        centerTitle: true,
+        title: Row(
+          children: [
+            const AppLogo(height: 40),
+            const Expanded(
+              child: Text(
+                'Wachtkamer',
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ],
+        ),
       ),
       body: SafeArea(
         child: Padding(

@@ -215,18 +215,17 @@ class _GameScreenState extends ConsumerState<GameScreen> {
           icon: const Icon(Icons.close),
           onPressed: _leaveGame,
         ),
-        title: Column(
-          mainAxisSize: MainAxisSize.min,
+        title: Row(
           children: [
-            const AppLogo(height: 28),
-            Text(
-              _getPhaseTitle(game.phase),
-              style: const TextStyle(fontSize: 12),
+            const AppLogo(height: 40),
+            Expanded(
+              child: Text(
+                _getPhaseTitle(game.phase),
+                textAlign: TextAlign.center,
+              ),
             ),
           ],
         ),
-        centerTitle: true,
-        toolbarHeight: 64,
         actions: [
           IconButton(
             icon: const Icon(Icons.leaderboard),
