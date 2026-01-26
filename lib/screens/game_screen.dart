@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -17,12 +19,52 @@ class GameScreen extends ConsumerStatefulWidget {
 }
 
 class _GameScreenState extends ConsumerState<GameScreen> {
+  // Pauze states voor het tonen van resultaten
+  bool _showBidSummary = false;
+  bool _showTrickResult = false;
+  Timer? _pauseTimer;
+
+  // Track vorige state om veranderingen te detecteren
+  bool _wasInBiddingPhase = false;
+  int? _lastTrickCardCount;
+  models.Trick? _completedTrickToShow;
+
   @override
   void initState() {
     super.initState();
     // Laad het spel
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(gameProvider.notifier).loadGame(widget.gameId);
+    });
+  }
+
+  @override
+  void dispose() {
+    _pauseTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startPauseTimer(VoidCallback onComplete) {
+    _pauseTimer?.cancel();
+    _pauseTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted) {
+        onComplete();
+      }
+    });
+  }
+
+  void _dismissBidSummary() {
+    _pauseTimer?.cancel();
+    setState(() {
+      _showBidSummary = false;
+    });
+  }
+
+  void _dismissTrickResult() {
+    _pauseTimer?.cancel();
+    setState(() {
+      _showTrickResult = false;
+      _completedTrickToShow = null;
     });
   }
 
@@ -64,6 +106,39 @@ class _GameScreenState extends ConsumerState<GameScreen> {
             backgroundColor: theme.colorScheme.error,
           ),
         );
+      }
+
+      // Detecteer wanneer bieden net klaar is
+      final prevGame = previous?.gameState;
+      final nextGame = next.gameState;
+      if (prevGame != null && nextGame != null) {
+        // Check of we net van bidding naar playing zijn gegaan
+        if (prevGame.phase == GamePhase.bidding &&
+            nextGame.phase == GamePhase.playing &&
+            !_showBidSummary) {
+          setState(() {
+            _showBidSummary = true;
+          });
+          _startPauseTimer(_dismissBidSummary);
+        }
+
+        // Check of er net een slag is voltooid
+        if (nextGame.phase == GamePhase.playing) {
+          final currentTrickCards = nextGame.currentTrick?.cards.length ?? 0;
+          final completedTrick = nextGame.completedTrick;
+
+          // Als er een voltooide slag is en we tonen hem nog niet
+          if (completedTrick != null &&
+              completedTrick.cards.length == nextGame.players.length &&
+              !_showTrickResult &&
+              _completedTrickToShow == null) {
+            setState(() {
+              _showTrickResult = true;
+              _completedTrickToShow = completedTrick;
+            });
+            _startPauseTimer(_dismissTrickResult);
+          }
+        }
       }
     });
 
@@ -135,7 +210,206 @@ class _GameScreenState extends ConsumerState<GameScreen> {
         ],
       ),
       body: SafeArea(
-        child: _buildGameContent(context, game, gameState.isMyTurn),
+        child: Stack(
+          children: [
+            _buildGameContent(context, game, gameState.isMyTurn),
+            // Overlay voor bod samenvatting
+            if (_showBidSummary)
+              _buildBidSummaryOverlay(context, game),
+            // Overlay voor slag resultaat
+            if (_showTrickResult && _completedTrickToShow != null)
+              _buildTrickResultOverlay(context, game, _completedTrickToShow!),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBidSummaryOverlay(BuildContext context, GameState game) {
+    final theme = Theme.of(context);
+
+    return Container(
+      color: Colors.black54,
+      child: Center(
+        child: Card(
+          margin: const EdgeInsets.all(24),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.gavel,
+                  size: 48,
+                  color: theme.colorScheme.primary,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Alle biedingen binnen!',
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Toon alle biedingen
+                ...game.players.map((player) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: 100,
+                        child: Text(
+                          player.name,
+                          style: theme.textTheme.bodyLarge,
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primaryContainer,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          '${player.bid ?? 0}',
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.onPrimaryContainer,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                )),
+                const SizedBox(height: 16),
+                // Totaal vs kaarten
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: game.totalBidsSoFar == game.cardsThisRound
+                        ? Colors.orange.withValues(alpha: 0.2)
+                        : game.totalBidsSoFar > game.cardsThisRound
+                            ? Colors.red.withValues(alpha: 0.2)
+                            : Colors.blue.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    'Totaal: ${game.totalBidsSoFar} / ${game.cardsThisRound} kaarten',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                FilledButton.icon(
+                  onPressed: _dismissBidSummary,
+                  icon: const Icon(Icons.play_arrow),
+                  label: const Text('Start met spelen'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTrickResultOverlay(BuildContext context, GameState game, models.Trick trick) {
+    final theme = Theme.of(context);
+    final winnerId = trick.winnerId;
+    final winner = winnerId != null
+        ? game.players.firstWhere((p) => p.id == winnerId)
+        : null;
+
+    return Container(
+      color: Colors.black54,
+      child: Center(
+        child: Card(
+          margin: const EdgeInsets.all(24),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Slag compleet!',
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                // Toon de gespeelde kaarten
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  alignment: WrapAlignment.center,
+                  children: trick.cards.map((pc) {
+                    final player = game.players.firstWhere((p) => p.id == pc.playerId);
+                    final isWinner = pc.playerId == winnerId;
+                    return Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          decoration: isWinner
+                              ? BoxDecoration(
+                                  border: Border.all(color: Colors.green, width: 3),
+                                  borderRadius: BorderRadius.circular(12),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.green.withValues(alpha: 0.4),
+                                      blurRadius: 8,
+                                      spreadRadius: 2,
+                                    ),
+                                  ],
+                                )
+                              : null,
+                          child: _buildCard(pc.card, large: true),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          player.name,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: isWinner ? FontWeight.bold : null,
+                            color: isWinner ? Colors.green : null,
+                          ),
+                        ),
+                      ],
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 24),
+                if (winner != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.emoji_events, color: Colors.green),
+                        const SizedBox(width: 8),
+                        Text(
+                          '${winner.name} wint!',
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            color: Colors.green,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                const SizedBox(height: 24),
+                FilledButton.icon(
+                  onPressed: _dismissTrickResult,
+                  icon: const Icon(Icons.arrow_forward),
+                  label: const Text('Doorgaan'),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -373,10 +647,6 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     final currentPlayer = ref.watch(currentPlayerProvider);
     final playableCards = ref.watch(playableCardsProvider);
 
-    // Bepaal of we de voltooide slag moeten tonen
-    final showCompletedTrick = game.completedTrick != null &&
-        game.completedTrick!.cards.length == game.players.length;
-
     return Column(
       children: [
         // Status balk: over/onderbod + jouw bod/slagen
@@ -408,13 +678,11 @@ class _GameScreenState extends ConsumerState<GameScreen> {
         ),
         const SizedBox(height: 8),
 
-        // Voltooide slag of huidige slag
+        // Huidige slag
         Expanded(
           child: Card(
             child: Center(
-              child: showCompletedTrick
-                  ? _buildCompletedTrickView(context, game)
-                  : _buildCurrentTrickView(context, game),
+              child: _buildCurrentTrickView(context, game),
             ),
           ),
         ),
@@ -537,65 +805,6 @@ class _GameScreenState extends ConsumerState<GameScreen> {
           ],
         );
       }).toList(),
-    );
-  }
-
-  Widget _buildCompletedTrickView(BuildContext context, GameState game) {
-    final theme = Theme.of(context);
-    final winnerId = game.completedTrickWinnerId;
-    final winner = winnerId != null
-        ? game.players.firstWhere((p) => p.id == winnerId)
-        : null;
-
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          'Slag compleet!',
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          children: game.completedTrick!.cards.map((pc) {
-            final player = game.players.firstWhere((p) => p.id == pc.playerId);
-            final isWinner = pc.playerId == winnerId;
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  decoration: isWinner
-                      ? BoxDecoration(
-                          border: Border.all(color: Colors.green, width: 3),
-                          borderRadius: BorderRadius.circular(10),
-                        )
-                      : null,
-                  child: _buildCard(pc.card, large: true),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  player.name,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    fontWeight: isWinner ? FontWeight.bold : null,
-                    color: isWinner ? Colors.green : null,
-                  ),
-                ),
-              ],
-            );
-          }).toList(),
-        ),
-        const SizedBox(height: 8),
-        if (winner != null)
-          Text(
-            '${winner.name} wint de slag!',
-            style: theme.textTheme.bodyLarge?.copyWith(
-              color: Colors.green,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-      ],
     );
   }
 

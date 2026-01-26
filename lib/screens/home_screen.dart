@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../config.dart' show AppConfig;
 import '../game/rules.dart';
 import '../providers/auth_provider.dart';
 import '../providers/lobby_provider.dart';
@@ -237,149 +236,182 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     });
 
     return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 400),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Logo/Titel
-                  Icon(
-                    Icons.style,
-                    size: 80,
-                    color: theme.colorScheme.primary,
+      backgroundColor: Colors.black,
+      body: SizedBox.expand(
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Achtergrond afbeelding
+            Positioned.fill(
+              child: Image.asset(
+                'assets/images/home_banner.jpeg',
+                fit: BoxFit.cover,
+                alignment: Alignment.topCenter,
+              ),
+            ),
+            // Lichte gradient overlay alleen achter de form card
+            Positioned.fill(
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      Colors.transparent,
+                      Colors.black.withValues(alpha: 0.15),
+                      Colors.black.withValues(alpha: 0.3),
+                    ],
+                    stops: const [0.0, 0.35, 0.5, 0.7],
                   ),
-                  const SizedBox(height: 16),
-                  Text(
-                    AppConfig.appName,
-                    style: theme.textTheme.headlineLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: theme.colorScheme.primary,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Het Nederlandse kaartspel',
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 48),
-
-                  // Naam invoer
-                  TextField(
-                    controller: _nameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Jouw naam',
-                      prefixIcon: Icon(Icons.person),
-                    ),
-                    textCapitalization: TextCapitalization.words,
-                    textInputAction: TextInputAction.next,
-                    enabled: !isLoading,
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Nieuw spel knop
-                  FilledButton.icon(
-                    onPressed: isLoading ? null : _createGame,
-                    icon: isLoading
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Icon(Icons.add),
-                    label: const Text('Nieuw spel starten'),
-                  ),
-                  const SizedBox(height: 32),
-
-                  // Divider
-                  Row(
+                ),
+              ),
+            ),
+            // Content
+            SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 400),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Expanded(child: Divider()),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Text(
-                          'of',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
+                      // Spacer om content naar beneden te duwen
+                      const SizedBox(height: 150),
+
+                      // Form card met beige achtergrond passend bij de illustratie
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF5EBD7).withValues(alpha: 0.95),
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.2),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            // Naam invoer
+                            TextField(
+                              controller: _nameController,
+                              decoration: const InputDecoration(
+                                labelText: 'Jouw naam',
+                                prefixIcon: Icon(Icons.person),
+                              ),
+                              textCapitalization: TextCapitalization.words,
+                              textInputAction: TextInputAction.next,
+                              enabled: !isLoading,
+                            ),
+                            const SizedBox(height: 16),
+
+                            // Nieuw spel knop
+                            FilledButton.icon(
+                              onPressed: isLoading ? null : _createGame,
+                              icon: isLoading
+                                  ? const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : const Icon(Icons.add),
+                              label: const Text('Nieuw spel starten'),
+                            ),
+                            const SizedBox(height: 20),
+
+                            // Divider
+                            Row(
+                              children: [
+                                const Expanded(child: Divider()),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                                  child: Text(
+                                    'of',
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                      color: theme.colorScheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ),
+                                const Expanded(child: Divider()),
+                              ],
+                            ),
+                            const SizedBox(height: 20),
+
+                            // Code invoer
+                            TextField(
+                              controller: _codeController,
+                              decoration: const InputDecoration(
+                                labelText: 'Spelcode',
+                                prefixIcon: Icon(Icons.tag),
+                                hintText: 'ABCD',
+                              ),
+                              textCapitalization: TextCapitalization.characters,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z]')),
+                                LengthLimitingTextInputFormatter(4),
+                                UpperCaseTextFormatter(),
+                              ],
+                              textInputAction: TextInputAction.done,
+                              onSubmitted: (_) => _joinGame(),
+                              enabled: !isLoading,
+                            ),
+                            const SizedBox(height: 16),
+
+                            // Join knop
+                            OutlinedButton.icon(
+                              onPressed: isLoading ? null : _joinGame,
+                              icon: const Icon(Icons.login),
+                              label: const Text('Deelnemen aan spel'),
+                            ),
+
+                            // Error message
+                            if (error != null) ...[
+                              const SizedBox(height: 16),
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.errorContainer,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.error_outline,
+                                      color: theme.colorScheme.onErrorContainer,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        error,
+                                        style: TextStyle(
+                                          color: theme.colorScheme.onErrorContainer,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                       ),
-                      const Expanded(child: Divider()),
                     ],
                   ),
-                  const SizedBox(height: 32),
-
-                  // Code invoer
-                  TextField(
-                    controller: _codeController,
-                    decoration: const InputDecoration(
-                      labelText: 'Spelcode',
-                      prefixIcon: Icon(Icons.tag),
-                      hintText: 'ABCD',
-                    ),
-                    textCapitalization: TextCapitalization.characters,
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z]')),
-                      LengthLimitingTextInputFormatter(4),
-                      UpperCaseTextFormatter(),
-                    ],
-                    textInputAction: TextInputAction.done,
-                    onSubmitted: (_) => _joinGame(),
-                    enabled: !isLoading,
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Join knop
-                  OutlinedButton.icon(
-                    onPressed: isLoading ? null : _joinGame,
-                    icon: const Icon(Icons.login),
-                    label: const Text('Deelnemen aan spel'),
-                  ),
-
-                  // Error message
-                  if (error != null) ...[
-                    const SizedBox(height: 24),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.errorContainer,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.error_outline,
-                            color: theme.colorScheme.onErrorContainer,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              error,
-                              style: TextStyle(
-                                color: theme.colorScheme.onErrorContainer,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ],
+                ),
               ),
             ),
           ),
-        ),
+        ],
+      ),
       ),
     );
   }
