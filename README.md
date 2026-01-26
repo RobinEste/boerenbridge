@@ -15,7 +15,7 @@ Een Nederlandse multiplayer Boerenbridge app gebouwd met Flutter en Supabase.
 
 ## Demo
 
-Een live versie draait op: [lekkerkaarten.nl](http://lekkerkaarten.nl) (of http://91.98.65.86)
+Zelf op te zetten.
 
 ## Tech Stack
 
