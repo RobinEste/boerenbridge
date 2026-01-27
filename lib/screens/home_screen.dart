@@ -372,6 +372,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               icon: const Icon(Icons.login),
                               label: const Text('Deelnemen aan spel'),
                             ),
+                            const SizedBox(height: 20),
+
+                            // Speluitleg link
+                            Center(
+                              child: TextButton.icon(
+                                onPressed: () => context.goNamed('speluitleg'),
+                                icon: const Icon(
+                                  Icons.help_outline,
+                                  size: 18,
+                                  color: Color(0xFF8B7355),
+                                ),
+                                label: const Text(
+                                  'Hoe werkt het spel?',
+                                  style: TextStyle(
+                                    color: Color(0xFF8B7355),
+                                    decoration: TextDecoration.underline,
+                                  ),
+                                ),
+                              ),
+                            ),
 
                             // Error message
                             if (error != null) ...[

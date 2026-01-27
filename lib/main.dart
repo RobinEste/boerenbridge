@@ -7,6 +7,7 @@ import 'config.dart' show AppConfig;
 import 'screens/home_screen.dart';
 import 'screens/lobby_screen.dart';
 import 'screens/game_screen.dart';
+import 'screens/speluitleg_screen.dart';
 import 'services/supabase_service.dart';
 import 'theme/app_colors.dart';
 
@@ -50,6 +51,14 @@ final _router = GoRouter(
       builder: (context, state) {
         final gameId = state.pathParameters['gameId']!;
         return GameScreen(gameId: gameId);
+      },
+    ),
+    GoRoute(
+      path: '/speluitleg',
+      name: 'speluitleg',
+      builder: (context, state) {
+        final variant = state.uri.queryParameters['variant'] ?? 'volledig';
+        return SpeluitlegScreen(variant: variant);
       },
     ),
   ],
