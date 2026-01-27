@@ -68,10 +68,22 @@ server {
     gzip_types text/plain text/css application/json application/javascript text/xml application/xml text/javascript application/wasm;
     gzip_min_length 1000;
 
-    # Cache static assets
-    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+    # Geen cache voor HTML en Flutter bootstrap bestanden (altijd vers)
+    location ~* (index\.html|flutter_bootstrap\.js|flutter_service_worker\.js|version\.json|manifest\.json)$ {
+        expires -1;
+        add_header Cache-Control "no-store, no-cache, must-revalidate";
+    }
+
+    # Cache static assets (gehashte bestanden kunnen lang gecached)
+    location ~* \.(css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
         expires 1y;
         add_header Cache-Control "public, immutable";
+    }
+
+    # JavaScript: korte cache zodat updates snel doorkomen
+    location ~* \.js$ {
+        expires 1h;
+        add_header Cache-Control "public, max-age=3600";
     }
 
     # Flutter web app - SPA routing
