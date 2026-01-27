@@ -772,7 +772,7 @@ class _PodcastContentState extends State<_PodcastContent> {
 
   Future<void> _initAudio() async {
     try {
-      await _audioPlayer.setAsset('assets/sounds/speluitleg_podcast.m4a');
+      await _audioPlayer.setUrl('https://lekkerkaarten.nl/assets/video/speluitleg_podcast.m4a');
       setState(() => _isLoading = false);
     } catch (e) {
       setState(() {
