@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:just_audio/just_audio.dart';
 
 /// Scherm met speluitleg in drie varianten
 class SpeluitlegScreen extends StatefulWidget {
@@ -522,15 +523,56 @@ class _QuickstartContent extends StatelessWidget {
 // PODCAST CONTENT
 // ============================================================================
 
-class _PodcastContent extends StatelessWidget {
+class _PodcastContent extends StatefulWidget {
   const _PodcastContent();
+
+  @override
+  State<_PodcastContent> createState() => _PodcastContentState();
+}
+
+class _PodcastContentState extends State<_PodcastContent> {
+  late AudioPlayer _audioPlayer;
+  bool _isLoading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _audioPlayer = AudioPlayer();
+    _initAudio();
+  }
+
+  Future<void> _initAudio() async {
+    try {
+      await _audioPlayer.setAsset('assets/sounds/speluitleg_podcast.m4a');
+      setState(() => _isLoading = false);
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _error = 'Kon audio niet laden';
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _audioPlayer.dispose();
+    super.dispose();
+  }
+
+  String _formatDuration(Duration? duration) {
+    if (duration == null) return '--:--';
+    final minutes = duration.inMinutes;
+    final seconds = duration.inSeconds % 60;
+    return '$minutes:${seconds.toString().padLeft(2, '0')}';
+  }
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildTitle('Podcast Script'),
+        _buildTitle('Podcast'),
         const SizedBox(height: 4),
         const Text(
           '"Grote mond? Maak het waar (...of niet)"',
@@ -540,28 +582,199 @@ class _PodcastContent extends StatelessWidget {
             color: Color(0xFF8B7355),
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 24),
+
+        // Audio Player
         Container(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: const Color(0xFFE8F5E9),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: const Color(0xFF81C784)),
-          ),
-          child: const Row(
-            children: [
-              Icon(Icons.info_outline, color: Color(0xFF388E3C)),
-              SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  'Kopieer deze tekst en plak in NotebookLM om een podcast audio te genereren.',
-                  style: TextStyle(color: Color(0xFF2E7D32)),
-                ),
+            gradient: const LinearGradient(
+              colors: [Color(0xFF8B7355), Color(0xFF6D5D4D)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.2),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
               ),
             ],
           ),
+          child: Column(
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.podcasts, color: Colors.white, size: 28),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Boerenbridge Uitleg',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          'Gegenereerd met NotebookLM',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              if (_isLoading)
+                const Padding(
+                  padding: EdgeInsets.all(20),
+                  child: CircularProgressIndicator(color: Colors.white),
+                )
+              else if (_error != null)
+                Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Text(_error!, style: const TextStyle(color: Colors.white70)),
+                )
+              else ...[
+                // Progress bar
+                StreamBuilder<Duration?>(
+                  stream: _audioPlayer.positionStream,
+                  builder: (context, snapshot) {
+                    final position = snapshot.data ?? Duration.zero;
+                    final duration = _audioPlayer.duration ?? Duration.zero;
+                    return Column(
+                      children: [
+                        SliderTheme(
+                          data: SliderTheme.of(context).copyWith(
+                            activeTrackColor: Colors.white,
+                            inactiveTrackColor: Colors.white30,
+                            thumbColor: Colors.white,
+                            trackHeight: 4,
+                          ),
+                          child: Slider(
+                            value: position.inMilliseconds.toDouble(),
+                            max: duration.inMilliseconds.toDouble().clamp(1, double.infinity),
+                            onChanged: (value) {
+                              _audioPlayer.seek(Duration(milliseconds: value.toInt()));
+                            },
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                _formatDuration(position),
+                                style: const TextStyle(color: Colors.white70, fontSize: 12),
+                              ),
+                              Text(
+                                _formatDuration(duration),
+                                style: const TextStyle(color: Colors.white70, fontSize: 12),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+                const SizedBox(height: 8),
+
+                // Play/Pause controls
+                StreamBuilder<PlayerState>(
+                  stream: _audioPlayer.playerStateStream,
+                  builder: (context, snapshot) {
+                    final playerState = snapshot.data;
+                    final playing = playerState?.playing ?? false;
+                    final processingState = playerState?.processingState;
+
+                    return Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // Rewind 10s
+                        IconButton(
+                          icon: const Icon(Icons.replay_10, color: Colors.white, size: 32),
+                          onPressed: () {
+                            final newPosition = _audioPlayer.position - const Duration(seconds: 10);
+                            _audioPlayer.seek(newPosition < Duration.zero ? Duration.zero : newPosition);
+                          },
+                        ),
+                        const SizedBox(width: 16),
+
+                        // Play/Pause
+                        Container(
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                          ),
+                          child: IconButton(
+                            iconSize: 40,
+                            icon: Icon(
+                              processingState == ProcessingState.loading ||
+                                      processingState == ProcessingState.buffering
+                                  ? Icons.hourglass_empty
+                                  : playing
+                                      ? Icons.pause
+                                      : Icons.play_arrow,
+                              color: const Color(0xFF8B7355),
+                            ),
+                            onPressed: () {
+                              if (playing) {
+                                _audioPlayer.pause();
+                              } else {
+                                _audioPlayer.play();
+                              }
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+
+                        // Forward 10s
+                        IconButton(
+                          icon: const Icon(Icons.forward_10, color: Colors.white, size: 32),
+                          onPressed: () {
+                            final duration = _audioPlayer.duration ?? Duration.zero;
+                            final newPosition = _audioPlayer.position + const Duration(seconds: 10);
+                            _audioPlayer.seek(newPosition > duration ? duration : newPosition);
+                          },
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ],
+            ],
+          ),
         ),
-        const SizedBox(height: 24),
+
+        const SizedBox(height: 32),
+
+        // Script section
+        Row(
+          children: [
+            const Icon(Icons.description, color: Color(0xFF8B7355)),
+            const SizedBox(width: 8),
+            Text(
+              'Podcast Script',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: const Color(0xFF5D4E37).withValues(alpha: 0.8),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
 
         _buildPodcastSection(
           'Context voor de AI-host',
@@ -630,46 +843,46 @@ class _PodcastContent extends StatelessWidget {
       ],
     );
   }
-
-  Widget _buildPodcastSection(String title, String content) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE0E0E0)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title.toUpperCase(),
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF8B7355),
-              letterSpacing: 1,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            content,
-            style: const TextStyle(
-              fontSize: 14,
-              color: Color(0xFF424242),
-              height: 1.5,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 // ============================================================================
 // SHARED WIDGETS
 // ============================================================================
+
+Widget _buildPodcastSection(String title, String content) {
+  return Container(
+    margin: const EdgeInsets.only(bottom: 16),
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: const Color(0xFFE0E0E0)),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title.toUpperCase(),
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF8B7355),
+            letterSpacing: 1,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          content,
+          style: const TextStyle(
+            fontSize: 14,
+            color: Color(0xFF424242),
+            height: 1.5,
+          ),
+        ),
+      ],
+    ),
+  );
+}
 
 Widget _buildTitle(String text) {
   return Text(
