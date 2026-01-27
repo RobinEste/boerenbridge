@@ -46,9 +46,12 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     super.dispose();
   }
 
+  // Pauze duur voor overlays (bid samenvatting, slag resultaat)
+  static const Duration _pauseDuration = Duration(seconds: 5);
+
   void _startPauseTimer(VoidCallback onComplete) {
     _pauseTimer?.cancel();
-    _pauseTimer = Timer(const Duration(seconds: 3), () {
+    _pauseTimer = Timer(_pauseDuration, () {
       if (mounted) {
         onComplete();
       }
