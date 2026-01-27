@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:video_player/video_player.dart';
 
-/// Scherm met speluitleg in drie varianten
+/// Scherm met speluitleg in vier varianten
 class SpeluitlegScreen extends StatefulWidget {
-  final String variant; // 'volledig', 'quickstart', of 'podcast'
+  final String variant; // 'video', 'quickstart', 'volledig', of 'podcast'
 
   const SpeluitlegScreen({
     super.key,
@@ -17,12 +18,12 @@ class SpeluitlegScreen extends StatefulWidget {
 }
 
 class _SpeluitlegScreenState extends State<SpeluitlegScreen> {
-  String _currentVariant = 'volledig';
+  String _currentVariant = 'video';
 
   @override
   void initState() {
     super.initState();
-    _currentVariant = widget.variant;
+    _currentVariant = widget.variant.isEmpty ? 'video' : widget.variant;
   }
 
   @override
@@ -56,10 +57,10 @@ class _SpeluitlegScreenState extends State<SpeluitlegScreen> {
               children: [
                 Expanded(
                   child: _TabButton(
-                    label: 'Volledig',
-                    icon: Icons.menu_book,
-                    isSelected: _currentVariant == 'volledig',
-                    onTap: () => setState(() => _currentVariant = 'volledig'),
+                    label: 'Video',
+                    icon: Icons.play_circle,
+                    isSelected: _currentVariant == 'video',
+                    onTap: () => setState(() => _currentVariant = 'video'),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -69,6 +70,15 @@ class _SpeluitlegScreenState extends State<SpeluitlegScreen> {
                     icon: Icons.flash_on,
                     isSelected: _currentVariant == 'quickstart',
                     onTap: () => setState(() => _currentVariant = 'quickstart'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _TabButton(
+                    label: 'Lezen',
+                    icon: Icons.menu_book,
+                    isSelected: _currentVariant == 'volledig',
+                    onTap: () => setState(() => _currentVariant = 'volledig'),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -97,6 +107,8 @@ class _SpeluitlegScreenState extends State<SpeluitlegScreen> {
 
   Widget _buildContent() {
     switch (_currentVariant) {
+      case 'video':
+        return const _VideoContent();
       case 'quickstart':
         return const _QuickstartContent();
       case 'podcast':
@@ -353,6 +365,222 @@ class _VolledigContent extends StatelessWidget {
               fontStyle: FontStyle.italic,
               color: Color(0xFF8B7355),
             ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ============================================================================
+// VIDEO CONTENT
+// ============================================================================
+
+class _VideoContent extends StatefulWidget {
+  const _VideoContent();
+
+  @override
+  State<_VideoContent> createState() => _VideoContentState();
+}
+
+class _VideoContentState extends State<_VideoContent> {
+  late VideoPlayerController _controller;
+  bool _isInitialized = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _initVideo();
+  }
+
+  Future<void> _initVideo() async {
+    _controller = VideoPlayerController.networkUrl(
+      Uri.parse('https://lekkerkaarten.nl/assets/video/speluitleg.mp4'),
+    );
+
+    try {
+      await _controller.initialize();
+      setState(() => _isInitialized = true);
+    } catch (e) {
+      setState(() => _error = 'Kon video niet laden');
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  String _formatDuration(Duration duration) {
+    final minutes = duration.inMinutes;
+    final seconds = duration.inSeconds % 60;
+    return '$minutes:${seconds.toString().padLeft(2, '0')}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildTitle('Boerenbridge in 5 minuten'),
+        const SizedBox(height: 4),
+        const Text(
+          'Grote mond? Maak het waar (...of niet)',
+          style: TextStyle(
+            fontSize: 16,
+            fontStyle: FontStyle.italic,
+            color: Color(0xFF8B7355),
+          ),
+        ),
+        const SizedBox(height: 24),
+
+        // Video Player
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.black,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.2),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: AspectRatio(
+              aspectRatio: 16 / 9,
+              child: _error != null
+                  ? Center(
+                      child: Text(
+                        _error!,
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                    )
+                  : !_isInitialized
+                      ? const Center(
+                          child: CircularProgressIndicator(color: Colors.white),
+                        )
+                      : Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            VideoPlayer(_controller),
+                            // Play/Pause overlay
+                            GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  if (_controller.value.isPlaying) {
+                                    _controller.pause();
+                                  } else {
+                                    _controller.play();
+                                  }
+                                });
+                              },
+                              child: Container(
+                                color: Colors.transparent,
+                                child: Center(
+                                  child: AnimatedOpacity(
+                                    opacity: _controller.value.isPlaying ? 0.0 : 1.0,
+                                    duration: const Duration(milliseconds: 300),
+                                    child: Container(
+                                      padding: const EdgeInsets.all(16),
+                                      decoration: BoxDecoration(
+                                        color: Colors.black.withValues(alpha: 0.6),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(
+                                        Icons.play_arrow,
+                                        color: Colors.white,
+                                        size: 48,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+            ),
+          ),
+        ),
+
+        // Video controls
+        if (_isInitialized) ...[
+          const SizedBox(height: 12),
+          ValueListenableBuilder(
+            valueListenable: _controller,
+            builder: (context, value, child) {
+              return Column(
+                children: [
+                  // Progress bar
+                  SliderTheme(
+                    data: SliderTheme.of(context).copyWith(
+                      activeTrackColor: const Color(0xFF8B7355),
+                      inactiveTrackColor: const Color(0xFFD4C4A8),
+                      thumbColor: const Color(0xFF8B7355),
+                      trackHeight: 4,
+                    ),
+                    child: Slider(
+                      value: value.position.inMilliseconds.toDouble(),
+                      max: value.duration.inMilliseconds.toDouble().clamp(1, double.infinity),
+                      onChanged: (newValue) {
+                        _controller.seekTo(Duration(milliseconds: newValue.toInt()));
+                      },
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          _formatDuration(value.position),
+                          style: const TextStyle(
+                            color: Color(0xFF8B7355),
+                            fontSize: 12,
+                          ),
+                        ),
+                        Text(
+                          _formatDuration(value.duration),
+                          style: const TextStyle(
+                            color: Color(0xFF8B7355),
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ],
+
+        const SizedBox(height: 24),
+
+        // Info text
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF5EBD7),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: const Row(
+            children: [
+              Icon(Icons.lightbulb_outline, color: Color(0xFF8B7355)),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Na deze video ben je klaar om te spelen! Wil je de regels nog eens nalezen? Check de andere tabs.',
+                  style: TextStyle(
+                    color: Color(0xFF5D4E37),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ],
