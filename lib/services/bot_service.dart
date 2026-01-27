@@ -17,7 +17,7 @@ class BotService {
   static const Duration _disconnectTimeout = Duration(seconds: 60);
 
   // Bot feature toggle
-  static const bool _botEnabled = true;
+  static const bool _botEnabled = false;
 
   BotService({
     required this.gameId,
