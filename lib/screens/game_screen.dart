@@ -658,6 +658,28 @@ class _GameScreenState extends ConsumerState<GameScreen> {
           const SizedBox(height: 16),
         ],
 
+        // Instructie voor nieuwe spelers (eerste 3 rondes)
+        if (isMyTurn && currentPlayer != null && allowedBids.isNotEmpty && game.currentRoundIndex < 3)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Column(
+              children: [
+                Text(
+                  'Kies je bod',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+                Icon(
+                  Icons.arrow_downward,
+                  color: theme.colorScheme.primary,
+                  size: 24,
+                ),
+              ],
+            ),
+          ),
+
         // Bied knoppen
         if (isMyTurn && currentPlayer != null && allowedBids.isNotEmpty)
           Wrap(
@@ -667,7 +689,6 @@ class _GameScreenState extends ConsumerState<GameScreen> {
             children: allowedBids.map((bid) {
               return FilledButton(
                 onPressed: () {
-                  print('DEBUG: Placing bid $bid');
                   ref.read(gameProvider.notifier).placeBid(bid);
                 },
                 child: Text('$bid'),
