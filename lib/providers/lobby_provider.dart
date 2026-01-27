@@ -11,6 +11,7 @@ class LobbyState {
   final String? joinCode;
   final List<Player> players;
   final bool isHost;
+  final String? hostId; // User ID van de spelstarter
   final GameRules rules;
   final bool isLoading;
   final String? error;
@@ -21,6 +22,7 @@ class LobbyState {
     this.joinCode,
     this.players = const [],
     this.isHost = false,
+    this.hostId,
     this.rules = GameRules.dutch,
     this.isLoading = false,
     this.error,
@@ -32,6 +34,7 @@ class LobbyState {
     String? joinCode,
     List<Player>? players,
     bool? isHost,
+    String? hostId,
     GameRules? rules,
     bool? isLoading,
     String? error,
@@ -42,6 +45,7 @@ class LobbyState {
       joinCode: joinCode ?? this.joinCode,
       players: players ?? this.players,
       isHost: isHost ?? this.isHost,
+      hostId: hostId ?? this.hostId,
       rules: rules ?? this.rules,
       isLoading: isLoading ?? this.isLoading,
       error: error,
@@ -81,6 +85,7 @@ class LobbyNotifier extends StateNotifier<LobbyState> {
         gameId: gameInfo.gameId,
         joinCode: gameInfo.joinCode,
         isHost: true,
+        hostId: gameInfo.hostId,
         rules: gameInfo.rules,
         players: players,
         isLoading: false,
@@ -133,6 +138,7 @@ class LobbyNotifier extends StateNotifier<LobbyState> {
         gameId: gameInfo.gameId,
         joinCode: joinCode,
         isHost: false,
+        hostId: gameInfo.hostId,
         rules: gameInfo.rules,
         players: players,
         isLoading: false,

@@ -181,7 +181,7 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
                     itemBuilder: (context, index) {
                       if (index < players.length) {
                         final player = players[index];
-                        final isHostPlayer = index == 0;
+                        final isHostPlayer = player.odataId == lobbyState.hostId;
 
                         return ListTile(
                           leading: CircleAvatar(

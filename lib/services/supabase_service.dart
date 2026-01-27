@@ -103,6 +103,7 @@ class SupabaseService {
       gameId: gameId,
       joinCode: joinCode,
       rules: rules,
+      hostId: currentUserId!,
     );
   }
   
@@ -163,6 +164,7 @@ class SupabaseService {
       gameId: gameId,
       joinCode: joinCode,
       rules: GameRules.fromJson(gameResponse['rules'] as Map<String, dynamic>),
+      hostId: gameResponse['host_id'] as String,
     );
   }
   
@@ -571,11 +573,13 @@ class GameInfo {
   final String gameId;
   final String joinCode;
   final GameRules rules;
-  
+  final String hostId;
+
   GameInfo({
     required this.gameId,
     required this.joinCode,
     required this.rules,
+    required this.hostId,
   });
 }
 
