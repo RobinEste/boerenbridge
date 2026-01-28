@@ -28,79 +28,101 @@ class _SpeluitlegScreenState extends State<SpeluitlegScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+
     return Scaffold(
       backgroundColor: const Color(0xFFFFFBF5),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFF5EBD7),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/'),
-        ),
-        title: const Text('Speluitleg'),
-        actions: [
-          // Copy button voor podcast tekst
-          if (_currentVariant == 'podcast')
-            IconButton(
-              icon: const Icon(Icons.copy),
-              tooltip: 'Kopieer naar klembord',
-              onPressed: () => _copyToClipboard(context),
-            ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // Tab buttons
-          Container(
-            padding: const EdgeInsets.all(16),
-            color: const Color(0xFFF5EBD7),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _TabButton(
-                    label: 'Video',
-                    icon: Icons.play_circle,
-                    isSelected: _currentVariant == 'video',
-                    onTap: () => setState(() => _currentVariant = 'video'),
+      appBar: isLandscape
+          ? null // Geen AppBar in landscape
+          : AppBar(
+              backgroundColor: const Color(0xFFF5EBD7),
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () => context.go('/'),
+              ),
+              title: const Text('Speluitleg'),
+              actions: [
+                if (_currentVariant == 'podcast')
+                  IconButton(
+                    icon: const Icon(Icons.copy),
+                    tooltip: 'Kopieer naar klembord',
+                    onPressed: () => _copyToClipboard(context),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _TabButton(
-                    label: 'Quickstart',
-                    icon: Icons.flash_on,
-                    isSelected: _currentVariant == 'quickstart',
-                    onTap: () => setState(() => _currentVariant = 'quickstart'),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _TabButton(
-                    label: 'Lezen',
-                    icon: Icons.menu_book,
-                    isSelected: _currentVariant == 'volledig',
-                    onTap: () => setState(() => _currentVariant = 'volledig'),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _TabButton(
-                    label: 'Podcast',
-                    icon: Icons.podcasts,
-                    isSelected: _currentVariant == 'podcast',
-                    onTap: () => setState(() => _currentVariant = 'podcast'),
-                  ),
-                ),
               ],
             ),
-          ),
-          // Content
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: _buildContent(),
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Tab buttons - compact in landscape
+            Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: isLandscape ? 8 : 16,
+              ),
+              color: const Color(0xFFF5EBD7),
+              child: Row(
+                children: [
+                  // Terug knop in landscape (omdat AppBar weg is)
+                  if (isLandscape) ...[
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back, size: 20),
+                      onPressed: () => context.go('/'),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                    const SizedBox(width: 12),
+                  ],
+                  Expanded(
+                    child: _TabButton(
+                      label: 'Video',
+                      icon: Icons.play_circle,
+                      isSelected: _currentVariant == 'video',
+                      onTap: () => setState(() => _currentVariant = 'video'),
+                      compact: isLandscape,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _TabButton(
+                      label: 'Quickstart',
+                      icon: Icons.flash_on,
+                      isSelected: _currentVariant == 'quickstart',
+                      onTap: () => setState(() => _currentVariant = 'quickstart'),
+                      compact: isLandscape,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _TabButton(
+                      label: 'Lezen',
+                      icon: Icons.menu_book,
+                      isSelected: _currentVariant == 'volledig',
+                      onTap: () => setState(() => _currentVariant = 'volledig'),
+                      compact: isLandscape,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _TabButton(
+                      label: 'Podcast',
+                      icon: Icons.podcasts,
+                      isSelected: _currentVariant == 'podcast',
+                      onTap: () => setState(() => _currentVariant = 'podcast'),
+                      compact: isLandscape,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+            // Content
+            Expanded(
+              child: SingleChildScrollView(
+                padding: EdgeInsets.all(isLandscape ? 12 : 20),
+                child: _buildContent(),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -195,12 +217,14 @@ class _TabButton extends StatelessWidget {
   final IconData icon;
   final bool isSelected;
   final VoidCallback onTap;
+  final bool compact;
 
   const _TabButton({
     required this.label,
     required this.icon,
     required this.isSelected,
     required this.onTap,
+    this.compact = false,
   });
 
   @override
@@ -212,26 +236,39 @@ class _TabButton extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(8),
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
-                size: 20,
-                color: isSelected ? Colors.white : const Color(0xFF8B7355),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: isSelected ? Colors.white : const Color(0xFF8B7355),
-                ),
-              ),
-            ],
+          padding: EdgeInsets.symmetric(
+            vertical: compact ? 8 : 12,
+            horizontal: 8,
           ),
+          child: compact
+              // Compact: alleen icon
+              ? Center(
+                  child: Icon(
+                    icon,
+                    size: 20,
+                    color: isSelected ? Colors.white : const Color(0xFF8B7355),
+                  ),
+                )
+              // Normaal: icon + label
+              : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      icon,
+                      size: 20,
+                      color: isSelected ? Colors.white : const Color(0xFF8B7355),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: isSelected ? Colors.white : const Color(0xFF8B7355),
+                      ),
+                    ),
+                  ],
+                ),
         ),
       ),
     );
