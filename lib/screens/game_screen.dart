@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../game/game_comments.dart';
 import '../game/game_state.dart';
 import '../game/models.dart' as models;
 import '../providers/chat_provider.dart';
@@ -359,22 +360,43 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                 )),
                 const SizedBox(height: 16),
                 // Totaal vs kaarten
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: game.totalBidsSoFar == game.cardsThisRound
-                        ? Colors.orange.withValues(alpha: 0.2)
-                        : game.totalBidsSoFar > game.cardsThisRound
-                            ? Colors.red.withValues(alpha: 0.2)
-                            : Colors.blue.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    'Totaal: ${game.totalBidsSoFar} / ${game.cardsThisRound} kaarten',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                Builder(
+                  builder: (context) {
+                    final bidDiff = game.totalBidsSoFar - game.cardsThisRound;
+                    final teamComment = GameComments.getTeamComment(bidDifference: bidDiff);
+
+                    return Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: bidDiff == 0
+                            ? Colors.orange.withValues(alpha: 0.2)
+                            : bidDiff > 0
+                                ? Colors.red.withValues(alpha: 0.2)
+                                : Colors.blue.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        children: [
+                          Text(
+                            'Totaal: ${game.totalBidsSoFar} / ${game.cardsThisRound} kaarten',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          if (teamComment != null) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              teamComment,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                fontStyle: FontStyle.italic,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ],
+                      ),
+                    );
+                  },
                 ),
                 const SizedBox(height: 24),
                 FilledButton.icon(
@@ -1017,6 +1039,22 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     final sortedPlayers = [...game.players]
       ..sort((a, b) => b.totalScore.compareTo(a.totalScore));
 
+    // Bereken ronde scores voor winnaar/verliezer bepaling
+    final roundScores = <String, int>{};
+    for (final player in game.players) {
+      roundScores[player.id] = game.rules.calculateRoundScore(
+        player.bid!,
+        player.tricksTaken,
+      );
+    }
+    final maxRoundScore = roundScores.values.reduce((a, b) => a > b ? a : b);
+    final minRoundScore = roundScores.values.reduce((a, b) => a < b ? a : b);
+
+    // Team comment gebaseerd op bid difference
+    final teamComment = GameComments.getTeamComment(
+      bidDifference: game.bidDifference,
+    );
+
     return Column(
       children: [
         Text(
@@ -1024,7 +1062,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
           style: theme.textTheme.headlineSmall,
         ),
         const SizedBox(height: 8),
-        // Over/onderbod status
+        // Over/onderbod status met optionele team comment
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
@@ -1035,16 +1073,29 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                     : Colors.green.withValues(alpha: 0.2),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Text(
-            game.bidStatusText,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: game.bidDifference > 0
-                  ? Colors.orange
-                  : game.bidDifference < 0
-                      ? Colors.blue
-                      : Colors.green,
-            ),
+          child: Column(
+            children: [
+              Text(
+                game.bidStatusText,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: game.bidDifference > 0
+                      ? Colors.orange
+                      : game.bidDifference < 0
+                          ? Colors.blue
+                          : Colors.green,
+                ),
+              ),
+              if (teamComment != null) ...[
+                const SizedBox(height: 4),
+                Text(
+                  teamComment,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ],
+            ],
           ),
         ),
         const SizedBox(height: 16),
@@ -1056,9 +1107,18 @@ class _GameScreenState extends ConsumerState<GameScreen> {
               itemBuilder: (context, index) {
                 final player = sortedPlayers[index];
                 final correct = player.bid == player.tricksTaken;
-                final roundScore = game.rules.calculateRoundScore(
-                  player.bid!,
-                  player.tricksTaken,
+                final roundScore = roundScores[player.id]!;
+                final isRoundWinner = roundScore == maxRoundScore;
+                final isRoundLoser = roundScore == minRoundScore && maxRoundScore != minRoundScore;
+
+                // Haal grappige opmerking voor deze speler
+                final comment = GameComments.getPlayerRoundComment(
+                  bid: player.bid!,
+                  tricksTaken: player.tricksTaken,
+                  roundScore: roundScore,
+                  isRoundWinner: isRoundWinner,
+                  isRoundLoser: isRoundLoser,
+                  totalPlayers: game.players.length,
                 );
 
                 return ListTile(
@@ -1080,7 +1140,20 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                     ],
                   ),
                   title: Text(player.name),
-                  subtitle: Text('Bod: ${player.bid} | Gehaald: ${player.tricksTaken}'),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Bod: ${player.bid} | Gehaald: ${player.tricksTaken}'),
+                      if (comment != null)
+                        Text(
+                          comment,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            fontStyle: FontStyle.italic,
+                            color: theme.colorScheme.primary,
+                          ),
+                        ),
+                    ],
+                  ),
                   trailing: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.end,
@@ -1118,6 +1191,14 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     final sortedPlayers = [...game.players]
       ..sort((a, b) => b.totalScore.compareTo(a.totalScore));
 
+    // Bereken marge tussen winnaar en tweede
+    final winnerScore = sortedPlayers.isNotEmpty ? sortedPlayers[0].totalScore : 0;
+    final secondScore = sortedPlayers.length > 1 ? sortedPlayers[1].totalScore : 0;
+    final winnerMargin = winnerScore - secondScore;
+
+    // Marge comment voor winnaar
+    final marginComment = GameComments.getWinnerMarginComment(margin: winnerMargin);
+
     return Column(
       children: [
         Icon(
@@ -1130,6 +1211,16 @@ class _GameScreenState extends ConsumerState<GameScreen> {
           'Spel afgelopen!',
           style: theme.textTheme.headlineSmall,
         ),
+        if (marginComment != null) ...[
+          const SizedBox(height: 4),
+          Text(
+            marginComment,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontStyle: FontStyle.italic,
+              color: theme.colorScheme.primary,
+            ),
+          ),
+        ],
         const SizedBox(height: 16),
         Expanded(
           child: Card(
@@ -1146,6 +1237,14 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                             ? '🥉'
                             : '';
 
+                // Haal grappige opmerking voor eindstand
+                final comment = GameComments.getPlayerGameEndComment(
+                  rank: index,
+                  totalScore: player.totalScore,
+                  winnerScore: winnerScore,
+                  totalPlayers: sortedPlayers.length,
+                );
+
                 return ListTile(
                   leading: Text(
                     medal.isNotEmpty ? medal : '${index + 1}.',
@@ -1155,6 +1254,15 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                     player.name,
                     style: index == 0 ? const TextStyle(fontWeight: FontWeight.bold) : null,
                   ),
+                  subtitle: comment != null
+                      ? Text(
+                          comment,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            fontStyle: FontStyle.italic,
+                            color: theme.colorScheme.primary,
+                          ),
+                        )
+                      : null,
                   trailing: Text(
                     '${player.totalScore}',
                     style: theme.textTheme.titleLarge?.copyWith(
