@@ -6,11 +6,13 @@ import 'package:go_router/go_router.dart';
 
 import '../game/game_state.dart';
 import '../game/models.dart' as models;
+import '../providers/chat_provider.dart';
 import '../providers/game_provider.dart';
 import '../services/connection_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/app_logo.dart';
 import '../widgets/connection_overlay.dart';
+import '../widgets/game_chat_widget.dart';
 
 class GameScreen extends ConsumerStatefulWidget {
   final String gameId;
@@ -40,9 +42,17 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     });
   }
 
+  /// Initialiseer chat wanneer we player ID hebben
+  void _initializeChatIfNeeded(String? playerId) {
+    if (playerId != null) {
+      ref.read(chatProvider.notifier).initialize(widget.gameId, playerId);
+    }
+  }
+
   @override
   void dispose() {
     _pauseTimer?.cancel();
+    ref.read(chatProvider.notifier).cleanup();
     super.dispose();
   }
 
@@ -210,7 +220,21 @@ class _GameScreenState extends ConsumerState<GameScreen> {
       );
     }
 
+    // Haal huidige speler op voor chat
+    final currentPlayer = ref.watch(currentPlayerProvider);
+
+    // Initialiseer chat als we een player ID hebben
+    if (currentPlayer != null) {
+      _initializeChatIfNeeded(currentPlayer.id);
+    }
+
     final connectionService = gameState.connectionService;
+
+    // Bepaal of chat button getoond moet worden (niet tijdens overlays)
+    final showChatButton = currentPlayer != null &&
+        !_showBidSummary &&
+        !_showTrickResult &&
+        game.phase != GamePhase.lobby;
 
     Widget scaffold = Scaffold(
       appBar: AppBar(
@@ -246,6 +270,16 @@ class _GameScreenState extends ConsumerState<GameScreen> {
             // Overlay voor slag resultaat
             if (_showTrickResult && _completedTrickToShow != null)
               _buildTrickResultOverlay(context, game, _completedTrickToShow!),
+            // Chat button
+            if (showChatButton)
+              Positioned(
+                bottom: 16,
+                right: 16,
+                child: ChatFloatingButton(
+                  gameId: widget.gameId,
+                  playerId: currentPlayer.id,
+                ),
+              ),
           ],
         ),
       ),

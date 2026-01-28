@@ -3,6 +3,7 @@
 
 import 'dart:async';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../game/chat_message.dart';
 import '../game/game_state.dart';
 import '../game/models.dart';
 import '../game/rules.dart';
@@ -17,9 +18,11 @@ class SupabaseService {
   
   // Realtime subscriptions
   RealtimeChannel? _gameChannel;
+  RealtimeChannel? _chatChannel;
   final _gameStateController = StreamController<GameState>.broadcast();
   final _playersController = StreamController<List<Player>>.broadcast();
   final _gameStartedController = StreamController<bool>.broadcast();
+  final _chatMessagesController = StreamController<ChatMessage>.broadcast();
   
   SupabaseService._();
   
@@ -52,6 +55,7 @@ class SupabaseService {
   Stream<GameState> get gameStateStream => _gameStateController.stream;
   Stream<List<Player>> get playersStream => _playersController.stream;
   Stream<bool> get gameStartedStream => _gameStartedController.stream;
+  Stream<ChatMessage> get chatMessageStream => _chatMessagesController.stream;
   
   // ===========================================================================
   // AUTHENTICATION
@@ -550,18 +554,85 @@ class SupabaseService {
         .select()
         .eq('game_id', gameId)
         .maybeSingle();
-    
+
     if (response == null) return null;
-    
+
     return GameState.fromJson(response['state'] as Map<String, dynamic>);
   }
-  
+
+  // ===========================================================================
+  // CHAT
+  // ===========================================================================
+
+  /// Haal chat berichten op voor een game
+  Future<List<ChatMessage>> getChatMessages(String gameId, {int limit = 50}) async {
+    final response = await _client
+        .from('game_chat_messages')
+        .select('*, game_players(display_name)')
+        .eq('game_id', gameId)
+        .order('created_at', ascending: true)
+        .limit(limit);
+
+    return (response as List)
+        .map((json) => ChatMessage.fromJson(json as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// Stuur een chat bericht
+  Future<void> sendChatMessage(String gameId, String playerId, String content) async {
+    if (content.trim().isEmpty) return;
+
+    await _client.from('game_chat_messages').insert({
+      'game_id': gameId,
+      'player_id': playerId,
+      'content': content.trim(),
+    });
+  }
+
+  /// Subscribe op chat berichten voor een game
+  void subscribeToChat(String gameId) {
+    _chatChannel?.unsubscribe();
+    _chatChannel = _client
+        .channel('chat:$gameId')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'game_chat_messages',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'game_id',
+            value: gameId,
+          ),
+          callback: (payload) async {
+            // Haal het volledige bericht op met player name
+            final messageId = payload.newRecord['id'];
+            final response = await _client
+                .from('game_chat_messages')
+                .select('*, game_players(display_name)')
+                .eq('id', messageId)
+                .single();
+
+            final message = ChatMessage.fromJson(response);
+            _chatMessagesController.add(message);
+          },
+        )
+        .subscribe();
+  }
+
+  /// Unsubscribe van chat
+  void unsubscribeFromChat() {
+    _chatChannel?.unsubscribe();
+    _chatChannel = null;
+  }
+
   /// Unsubscribe van alles
   void dispose() {
     _gameChannel?.unsubscribe();
+    _chatChannel?.unsubscribe();
     _gameStateController.close();
     _playersController.close();
     _gameStartedController.close();
+    _chatMessagesController.close();
   }
 }
 
