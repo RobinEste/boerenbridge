@@ -1,0 +1,18 @@
+name: Add DYM SSH Key (one-time)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  add-key:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Add DYM deploy key to server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: 91.98.65.86
+          username: root
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINNqt9+k2jT23+rTzSAE7gmO1ip4xLyYABq8h+JTBhi6 dym-github-deploy" >> /root/.ssh/authorized_keys
+            echo "DYM key added successfully!"
