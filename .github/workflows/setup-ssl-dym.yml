@@ -1,0 +1,19 @@
+name: Setup SSL for DYM (one-time)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install SSL certificate
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: 91.98.65.86
+          username: root
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            apt-get update && apt-get install -y certbot python3-certbot-nginx
+            certbot --nginx -d drawyourmap.nl -d www.drawyourmap.nl --non-interactive --agree-tos --email lisa@drawyourmap.nl
+            echo "SSL certificate installed!"
