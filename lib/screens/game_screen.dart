@@ -57,12 +57,13 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     super.dispose();
   }
 
-  // Pauze duur voor overlays (bid samenvatting, slag resultaat)
+  // Pauze duur voor overlays
   static const Duration _pauseDuration = Duration(seconds: 5);
+  static const Duration _trickPauseDuration = Duration(seconds: 10);
 
-  void _startPauseTimer(VoidCallback onComplete) {
+  void _startPauseTimer(VoidCallback onComplete, {Duration? duration}) {
     _pauseTimer?.cancel();
-    _pauseTimer = Timer(_pauseDuration, () {
+    _pauseTimer = Timer(duration ?? _pauseDuration, () {
       if (mounted) {
         onComplete();
       }
@@ -138,7 +139,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
           _startPauseTimer(_dismissBidSummary);
         }
 
-        // Check of er net een slag is voltooid
+        // Check of er net een slag is voltooid (tijdens spelen)
         if (nextGame.phase == GamePhase.playing) {
           final completedTrick = nextGame.completedTrick;
 
@@ -157,7 +158,27 @@ class _GameScreenState extends ConsumerState<GameScreen> {
               _completedTrickToShow = completedTrick;
               _lastShownTrickId = trickId;
             });
-            _startPauseTimer(_dismissTrickResult);
+            _startPauseTimer(_dismissTrickResult, duration: _trickPauseDuration);
+          }
+        }
+
+        // Check voor laatste slag (wanneer fase verandert van playing naar roundEnd)
+        if (prevGame.phase == GamePhase.playing &&
+            nextGame.phase == GamePhase.roundEnd &&
+            !_showTrickResult) {
+          final completedTrick = prevGame.completedTrick ?? nextGame.completedTrick;
+
+          if (completedTrick != null && completedTrick.cards.length == nextGame.players.length) {
+            final trickId = completedTrick.cards.map((pc) => '${pc.playerId}:${pc.card}').join(',');
+
+            if (trickId != _lastShownTrickId) {
+              setState(() {
+                _showTrickResult = true;
+                _completedTrickToShow = completedTrick;
+                _lastShownTrickId = trickId;
+              });
+              _startPauseTimer(_dismissTrickResult, duration: _trickPauseDuration);
+            }
           }
         }
 
