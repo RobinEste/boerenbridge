@@ -52,7 +52,12 @@ lekkerkaarten/
 │   └── main.dart                # App entry point + routing
 │
 ├── supabase/
-│   └── schema.sql               # Database schema
+│   ├── schema.sql               # Database schema
+│   ├── functions/
+│   │   ├── cleanup-games/       # Edge Function: oude games opruimen
+│   │   └── security-scanner/    # Edge Function: security vulnerability scanner
+│   ├── migrations/              # SQL migraties (004=security setup, 005=fixes)
+│   └── supabase-security-agent/ # Claude-powered security agent (Python)
 │
 ├── assets/
 │   └── images/
@@ -202,12 +207,30 @@ ufw deny <poort>/tcp
 - [x] Logo in AppBar
 - [x] Favicon (B icoon)
 - [x] Link preview / Open Graph tags
+- [x] Security scanner (Edge Function + GitHub Actions)
+- [x] Automated security agent (Claude-powered)
 
 ## Supabase
 
 - **Project**: Boerenbridge
 - **Region**: eu-central-1 (Frankfurt)
 - **Dashboard**: https://supabase.com/dashboard
+
+### Edge Functions
+
+| Functie | Trigger | Beschrijving |
+|---------|---------|--------------|
+| `cleanup-games` | Dagelijks 03:00 UTC (GitHub Actions) | Verwijdert games ouder dan 24 uur |
+| `security-scanner` | Dagelijks 06:00 UTC (GitHub Actions) | Scant database op 12+ security vulnerabilities |
+
+### Security Agent
+
+Automatische security pipeline:
+
+1. **Scanner** (Edge Function) controleert dagelijks op RLS, auth, data exposure, storage en configuratie issues
+2. **GitHub Issues** worden automatisch aangemaakt bij nieuwe findings (met deduplicatie)
+3. **Claude Agent** (Python) analyseert issues en genereert SQL migraties als PRs
+4. **GitHub Actions** orkestreert alles via `.github/workflows/security-agent.yml`
 
 ---
 
