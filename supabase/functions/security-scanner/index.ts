@@ -48,6 +48,10 @@ const SEVERITY_ORDER: Record<Severity, number> = {
 // Default configuration
 const DEFAULT_CONFIG: ScannerConfig = {
   enabled_checks: 'all',
+  excluded_checks: [
+    'permissive_rls_policy',  // By design: games/game_players moeten zichtbaar zijn voor spelers
+    'realtime_all_tables',    // By design: multiplayer kaartspel vereist realtime
+  ],
   severity_threshold: 'low',
   excluded_tables: ['_prisma_migrations', 'schema_migrations'],
   excluded_schemas: ['pg_catalog', 'information_schema', 'pg_toast'],
@@ -247,9 +251,14 @@ async function runFullScan(
   addScanBreadcrumb(`Starting security scan: ${scanId}`, 'scan', { config });
 
   // Filter checks based on config
-  const checksToRun = config.enabled_checks === 'all'
+  let checksToRun = config.enabled_checks === 'all'
     ? SECURITY_CHECKS
     : SECURITY_CHECKS.filter(c => (config.enabled_checks as string[]).includes(c.id));
+
+  // Exclude specific checks
+  if (config.excluded_checks && config.excluded_checks.length > 0) {
+    checksToRun = checksToRun.filter(c => !config.excluded_checks.includes(c.id));
+  }
 
   let passedChecks = 0;
   let failedChecks = 0;

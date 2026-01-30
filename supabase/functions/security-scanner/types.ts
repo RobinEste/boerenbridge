@@ -76,6 +76,7 @@ export interface GitHubIssuePayload {
 
 export interface ScannerConfig {
   enabled_checks: string[] | 'all';
+  excluded_checks: string[];
   severity_threshold: Severity;
   excluded_tables: string[];
   excluded_schemas: string[];
