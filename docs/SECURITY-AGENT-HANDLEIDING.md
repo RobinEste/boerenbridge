@@ -12,7 +12,7 @@ Een complete gids voor het opzetten van een geautomatiseerde security scanning p
 4. [Fase 2: Edge Function](#fase-2-edge-function)
 5. [Fase 3: GitHub Actions](#fase-3-github-actions)
 6. [Fase 4: Claude Agent (Python)](#fase-4-claude-agent-python)
-7. [Fase 5: Sentry (optioneel)](#fase-5-sentry-optioneel)
+7. [Fase 5: Sentry EU](#fase-5-sentry-eu)
 8. [Configuratie en tuning](#configuratie-en-tuning)
 9. [Testen](#testen)
 10. [Lessen en valkuilen](#lessen-en-valkuilen)
@@ -36,7 +36,7 @@ Supabase DB ──→ Edge Function Scanner ──→ GitHub Issues ──→ Gi
 | Scheduler | GitHub Actions (cron) | `.github/workflows/security-agent.yml` |
 | Security Agent | Python + Claude API | `supabase/supabase-security-agent/security_agent/` |
 | Database | PostgreSQL (`_security` schema) | `supabase/migrations/004_security_scanner_setup.sql` |
-| Monitoring | Sentry (optioneel) | Stub in `sentry.ts`, echte integratie voorbereid |
+| Monitoring | Sentry EU (Frankfurt) | Envelope API in `sentry.ts`, Python SDK in agent |
 
 ### Wat wordt gescand (12+ checks)
 
@@ -68,7 +68,7 @@ Supabase DB ──→ Edge Function Scanner ──→ GitHub Issues ──→ Gi
 - **Supabase CLI** (`brew install supabase/tap/supabase`)
 - **GitHub Personal Access Token** (scope: `repo`)
 - **Anthropic API key** (voor Claude agent)
-- **Sentry EU project** (optioneel)
+- **Sentry EU project** (aanbevolen — Frankfurt data residency)
 
 ### Supabase CLI installeren en linken
 
@@ -144,7 +144,7 @@ supabase/functions/security-scanner/
 ├── index.ts      # Hoofd Edge Function (request handler + scan logica)
 ├── checks.ts     # Alle security check definities met SQL queries
 ├── types.ts      # TypeScript type definities
-└── sentry.ts     # Sentry integratie (stub of echte implementatie)
+└── sentry.ts     # Sentry integratie via Envelope API (geen SDK)
 ```
 
 ### Belangrijke technische details
@@ -170,11 +170,11 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 ```
 
-**Sentry Deno module bestaat niet:**
+**Sentry via Envelope API (geen SDK):**
 
-De import `https://deno.land/x/sentry@8.0.0/index.mjs` bestaat niet op deno.land.
-Gebruik een stub-module die dezelfde API biedt maar niets doet. Wanneer Sentry
-later wordt toegevoegd, vervang je de stub door de echte implementatie.
+`@sentry/deno` vereist Deno 2, maar Supabase draait Deno 1.45.2. De `sentry.ts`
+module gebruikt de Sentry Envelope API (HTTP POST) voor error capture. Transactions
+en spans zijn no-ops. Zonder `SENTRY_DSN` zijn alle functies automatisch no-ops.
 
 ### Deduplicatie
 
@@ -254,7 +254,7 @@ Ga naar de repo → **Settings** → **Secrets and variables** → **Actions** �
 | `SUPABASE_URL` | Supabase project URL | Ja |
 | `SUPABASE_SERVICE_ROLE_KEY` | Service role key (Dashboard → Settings → API) | Ja |
 | `ANTHROPIC_API_KEY` | Claude API key | Ja (voor agent) |
-| `SENTRY_DSN` | Sentry project DSN | Nee |
+| `SENTRY_DSN` | Sentry EU DSN (`*.ingest.de.sentry.io`) | Nee (aanbevolen) |
 
 > **Let op:** `GITHUB_TOKEN` wordt automatisch door GitHub Actions aangeleverd.
 > De `GITHUB_TOKEN` in Supabase Secrets (voor de Edge Function) moet je wel handmatig
@@ -313,36 +313,64 @@ from .main import SecurityAgent, AgentConfig, Vulnerability, SecurityFix
 
 ---
 
-## Fase 5: Sentry (optioneel)
+## Fase 5: Sentry EU
 
-Sentry is voorbereid maar niet vereist. Alle code werkt zonder — als `SENTRY_DSN`
-niet is ingesteld, logt het een waarschuwing en gaat verder.
+Sentry is actief met EU data residency (Frankfurt). Alle data wordt opgeslagen
+in de EU. Als `SENTRY_DSN` niet is ingesteld, zijn alle functies no-ops —
+de scanner werkt dan gewoon zonder monitoring.
 
-### Wanneer toevoegen
+### Architectuur
 
-Voeg Sentry toe wanneer:
-- De scanner in productie draait en je monitoring wilt
-- Je alerts wilt bij critical/high findings
-- Je performance wilt tracken van scans en de Claude agent
+De `@sentry/deno` SDK vereist Deno 2, maar Supabase Edge Functions draaien op
+Deno 1.45.2. Daarom wordt een hybride aanpak gebruikt:
 
-### Vereisten
+| Component | Methode | Wat wordt getracked |
+|-----------|---------|---------------------|
+| Edge Function | Envelope API (HTTP POST, geen SDK) | Errors, vulnerability events, breadcrumbs |
+| Python Agent | Standaard `sentry-sdk` | LLM calls, GitHub operaties, errors |
 
-- **EU data residency** — kies bij het aanmaken van het Sentry project voor EU
-- Sentry DSN toevoegen als GitHub Secret en Supabase Secret
+**Transactions en spans** zijn no-ops in de Edge Function — performance monitoring
+vereist de SDK en is niet mogelijk zonder Deno 2 support.
 
-### Edge Function (TypeScript)
+### Wat de Edge Function tracked
 
-Vervang `supabase/functions/security-scanner/sentry.ts` stub door de echte implementatie
-uit `supabase/supabase-security-agent/supabase/functions/security-scanner/sentry.ts`.
+- **Errors** (`captureError`, `captureGitHubError`) — volledige stack trace, breadcrumbs, context
+- **Vulnerability events** (`recordVulnerability`) — als warning-level message events
+- **Breadcrumbs** — in-memory buffer (max 50), meegezonden bij errors
+- **Context/tags** — scan ID, project ref, check resultaten
+- **Scan metrics** — als breadcrumb (geen echte Sentry metrics zonder SDK)
 
-> **Probleem:** De Sentry Deno module (`https://deno.land/x/sentry@8.0.0/index.mjs`)
-> bestaat niet. Je moet een werkende Deno-compatibele Sentry import vinden,
-> of de stub blijven gebruiken en alleen de Python agent met Sentry draaien.
+### Data sanitization
+
+Gevoelige data wordt automatisch verwijderd uit events:
+- JWT tokens (`eyJ...`)
+- API keys (`sk-*`, `ghp_*`, `sk-ant-*`, `sbp_*`)
+- Wachtwoorden in connection strings
+
+### Graceful degradation
+
+- Zonder `SENTRY_DSN` → alle functies zijn no-ops, scanner werkt normaal
+- Ongeldige DSN → warning in console, verder als no-op
+- Sentry onbereikbaar → fire-and-forget, scan loopt door
+- `flushSentry()` → max 2 seconden timeout via `Promise.race()`
+
+### Secrets instellen
+
+```bash
+# Supabase (voor Edge Function)
+supabase secrets set SENTRY_DSN=<dsn> SENTRY_ENVIRONMENT=production
+
+# GitHub (voor Python agent)
+# Repo → Settings → Secrets → New: SENTRY_DSN
+```
+
+> **Let op:** De DSN moet naar `*.ingest.de.sentry.io` wijzen (EU endpoint).
+> Maak het Sentry project aan met EU data residency (Frankfurt).
 
 ### Python Agent
 
 De Python agent heeft volledige Sentry ondersteuning via `sentry_integration.py`.
-Stel `SENTRY_DSN` in als environment variable en de agent tracked automatisch:
+De GitHub Actions workflow geeft `SENTRY_DSN` automatisch door. De agent tracked:
 - LLM calls (tokens, duur)
 - GitHub operaties
 - Vulnerability events
@@ -492,15 +520,13 @@ nieuwe Supabase Edge Runtime versies.
 **Oplossing:** Gebruik `Deno.serve()` direct, zonder import. Kijk naar bestaande
 werkende Edge Functions in je project als referentie.
 
-### 3. Sentry Deno module bestaat niet
+### 3. Sentry SDK werkt niet op Deno 1.x
 
-**Probleem:** Deploy faalt met `Module not found "https://deno.land/x/sentry@8.0.0/index.mjs"`.
+**Probleem:** `@sentry/deno` vereist Deno 2, maar Supabase Edge Functions draaien op Deno 1.45.2.
 
-**Oorzaak:** Er is geen officieel Sentry pakket op deno.land voor deze versie.
-
-**Oplossing:** Gebruik een stub-module die dezelfde functies exporteert maar niets doet.
-De scanner werkt zonder Sentry. Voeg Sentry later toe wanneer een werkende Deno import
-beschikbaar is, of gebruik Sentry alleen in de Python agent.
+**Oplossing:** Hybride client die de Sentry Envelope API gebruikt (HTTP POST) voor
+error capture en message events. Transactions/spans zijn no-ops. Dit geeft error
+tracking met breadcrumbs en context, zonder SDK dependency.
 
 ### 4. JWT token op meerdere regels
 
@@ -537,7 +563,7 @@ gh issue list --repo <owner>/<repo> --state open --label "security,automated" \
 **Probleem:** Scanner rapporteert `USING (true)` policies als vulnerability.
 
 **Context:** Voor sommige tabellen is dit by design. In een multiplayer spel
-moeten spelers alle games en spelers kunnen zien.
+moeten spelers alle games en medespelers kunnen zien.
 
 **Oplossing:** Excludeer de check via `excluded_checks` config, of beperk
 de policy van `public` (anon + authenticated) naar alleen `authenticated`:
@@ -608,7 +634,6 @@ Gebruik deze checklist bij het opzetten van de security agent op een nieuw proje
 - [ ] Supabase CLI linken (`supabase login` + `supabase link`)
 - [ ] SQL migratie toepassen (004_security_scanner_setup.sql) via SQL Editor
 - [ ] Edge Function bestanden kopiëren naar `supabase/functions/security-scanner/`
-- [ ] `sentry.ts` aanpassen (stub of echte implementatie)
 - [ ] `index.ts` checks reviewen: welke zijn relevant, welke excluden
 - [ ] Edge Function deployen (`supabase functions deploy security-scanner`)
 - [ ] Supabase secrets instellen (`GITHUB_TOKEN`, `GITHUB_OWNER`, `GITHUB_REPO`)
@@ -620,4 +645,6 @@ Gebruik deze checklist bij het opzetten van de security agent op een nieuw proje
 - [ ] GitHub Actions handmatig triggeren
 - [ ] Eerste scan reviewen en irrelevante checks excluden
 - [ ] Gevonden issues fixen met migratie
+- [ ] Sentry EU project aanmaken (Frankfurt data residency)
+- [ ] `SENTRY_DSN` instellen als Supabase secret en GitHub secret
 - [ ] Documentatie bijwerken (CLAUDE.md, README.md)

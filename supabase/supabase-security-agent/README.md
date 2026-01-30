@@ -38,10 +38,11 @@ GitHub Issues aanmaakt, en een Claude SDK agent inzet om oplossingen te generere
 ## Componenten
 
 ### 1. Security Scanner (Supabase Edge Function)
-- Draait dagelijks via pg_cron of externe scheduler
-- Voert 15+ security checks uit op je database
+- Draait dagelijks via GitHub Actions (06:00 UTC)
+- Voert 12+ security checks uit op je database
 - Detecteert: RLS issues, exposed tables, insecure extensions, etc.
 - Stuurt vulnerabilities naar GitHub Issues API
+- Errors en findings naar Sentry EU via Envelope API
 
 ### 2. GitHub Integration
 - Issues worden aangemaakt met gestructureerde metadata
@@ -53,6 +54,13 @@ GitHub Issues aanmaakt, en een Claude SDK agent inzet om oplossingen te generere
 - Analyseert vulnerability en genereert SQL migration
 - Maakt automatisch een PR aan met de fix
 - Voegt test cases toe voor validatie
+- Errors en operaties naar Sentry EU via Python SDK
+
+### 4. Sentry EU Monitoring (Frankfurt)
+- **Edge Function**: Envelope API (geen SDK, Deno 1.x compatible)
+- **Python Agent**: Standaard `sentry-sdk`
+- Graceful degradation: werkt zonder `SENTRY_DSN`
+- Data sanitization: JWT, API keys en wachtwoorden worden verwijderd
 
 ## Quick Start
 
@@ -81,6 +89,7 @@ GITHUB_TOKEN=ghp_your-token
 GITHUB_OWNER=your-org
 GITHUB_REPO=your-repo
 ANTHROPIC_API_KEY=sk-ant-your-key
+SENTRY_DSN=https://key@o1234.ingest.de.sentry.io/5678
 ```
 
 3. **Deploy Edge Function**

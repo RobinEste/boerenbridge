@@ -209,6 +209,7 @@ ufw deny <poort>/tcp
 - [x] Link preview / Open Graph tags
 - [x] Security scanner (Edge Function + GitHub Actions)
 - [x] Automated security agent (Claude-powered)
+- [x] Sentry EU error tracking (Envelope API, Frankfurt)
 
 ## Supabase
 
@@ -231,6 +232,7 @@ Automatische security pipeline:
 2. **GitHub Issues** worden automatisch aangemaakt bij nieuwe findings (met deduplicatie)
 3. **Claude Agent** (Python) analyseert issues en genereert SQL migraties als PRs
 4. **GitHub Actions** orkestreert alles via `.github/workflows/security-agent.yml`
+5. **Sentry** (EU/Frankfurt) tracked errors en vulnerability events — Edge Function via Envelope API, Python agent via SDK
 
 ---
 
