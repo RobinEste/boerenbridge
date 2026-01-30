@@ -24,23 +24,18 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Create config.dart
+      - name: Create .env.json
         run: |
-          cat > lib/config.dart << 'EOF'
-          class AppConfig {
-            static const supabaseUrl = '${{ secrets.SUPABASE_URL }}';
-            static const supabaseAnonKey = '${{ secrets.SUPABASE_ANON_KEY }}';
-            static const appName = 'Lekkerkaarten';
-            static const minPlayers = 2;
-            static const maxPlayers = 6;
-          }
-          EOF
+          echo '{
+            "SUPABASE_URL": "${{ secrets.SUPABASE_URL }}",
+            "SUPABASE_ANON_KEY": "${{ secrets.SUPABASE_ANON_KEY }}"
+          }' > .env.json
 
       - name: Install dependencies
         run: flutter pub get
 
       - name: Build web
-        run: flutter build web --release
+        run: flutter build web --release --dart-define-from-file=.env.json
 
       - name: Deploy to server
         uses: appleboy/scp-action@v0.1.7

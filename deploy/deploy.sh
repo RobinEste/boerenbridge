@@ -43,7 +43,7 @@ if ! command -v flutter &> /dev/null; then
 fi
 
 # Build
-flutter build web --release
+flutter build web --release --dart-define-from-file=.env.json
 
 if [ ! -d "build/web" ]; then
     echo -e "${RED}Error: Build directory niet gevonden${NC}"
