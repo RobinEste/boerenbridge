@@ -34,7 +34,7 @@ Automatische security pipeline in `supabase/supabase-security-agent/`:
 - **Edge Function** (`security-scanner`) scant dagelijks om 06:00 UTC via GitHub Actions
 - **GitHub Issues** worden automatisch aangemaakt bij findings (met deduplicatie)
 - **Claude Agent** (Python) analyseert issues en maakt PRs met fixes
-- **Sentry** is voorbereid maar nog niet actief (stub in `sentry.ts`)
+- **Sentry** error tracking via Envelope API (geen SDK, Deno 1.x compatible). Actief wanneer `SENTRY_DSN` is gezet. Transactions/spans zijn no-ops.
 
 Relevante bestanden:
 - `.github/workflows/security-agent.yml` — GitHub Actions workflow
@@ -56,4 +56,4 @@ Deze findings zijn by design en uitgesloten van de scanner:
 | `SUPABASE_URL` | Supabase project URL |
 | `SUPABASE_SERVICE_ROLE_KEY` | Service role key |
 | `ANTHROPIC_API_KEY` | Claude API key (voor security agent) |
-| `SENTRY_DSN` | Sentry DSN (optioneel, nog niet actief) |
+| `SENTRY_DSN` | Sentry DSN (EU, `*.ingest.de.sentry.io`) — ook als Supabase secret |
