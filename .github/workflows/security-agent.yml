@@ -1,0 +1,114 @@
+name: Security Agent
+
+on:
+  schedule:
+    # Dagelijkse scan om 06:00 UTC (07:00 wintertijd, 08:00 zomertijd)
+    - cron: '0 6 * * *'
+
+  # Wanneer een security issue wordt aangemaakt of gelabeld
+  issues:
+    types: [opened, labeled]
+
+  # Handmatig triggeren via GitHub Actions UI
+  workflow_dispatch:
+    inputs:
+      scan_only:
+        description: 'Alleen scannen, geen issues verwerken'
+        required: false
+        default: 'false'
+        type: boolean
+
+jobs:
+  # Job 1: Trigger de security scanner Edge Function
+  scan:
+    name: Security scan uitvoeren
+    runs-on: ubuntu-latest
+    # Draait bij schedule, workflow_dispatch, of als het een issue is met security label
+    if: >
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'issues' &&
+       github.event.action == 'labeled' &&
+       github.event.label.name == 'security')
+
+    steps:
+      - name: Trigger security scan
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          echo "Starting security scan at $(date)"
+
+          response=$(curl -s -w "\n%{http_code}" -X POST \
+            "${SUPABASE_URL}/functions/v1/security-scanner" \
+            -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
+            -H "Content-Type: application/json" \
+            -d '{}')
+
+          http_code=$(echo "$response" | tail -1)
+          body=$(echo "$response" | head -n -1)
+
+          echo "HTTP Status: $http_code"
+          echo "Response: $body"
+
+          if [ "$http_code" -eq 200 ]; then
+            echo "Scan completed successfully"
+
+            # Parse summary
+            critical=$(echo "$body" | jq -r '.summary.critical // 0')
+            high=$(echo "$body" | jq -r '.summary.high // 0')
+            medium=$(echo "$body" | jq -r '.summary.medium // 0')
+            low=$(echo "$body" | jq -r '.summary.low // 0')
+
+            echo "Results: critical=$critical, high=$high, medium=$medium, low=$low"
+
+            # Fail de workflow als er critical/high issues zijn
+            if [ "$critical" -gt 0 ] || [ "$high" -gt 0 ]; then
+              echo "::warning::Critical/high vulnerabilities detected!"
+            fi
+          else
+            echo "Scan failed with status $http_code"
+            exit 1
+          fi
+
+  # Job 2: Verwerk security issues met de Claude agent
+  process-issue:
+    name: Security issue verwerken met Claude
+    runs-on: ubuntu-latest
+    # Alleen bij nieuwe issues met het security label
+    if: >
+      github.event_name == 'issues' &&
+      (github.event.action == 'opened' || github.event.action == 'labeled') &&
+      contains(toJSON(github.event.issue.labels.*.name), 'security') &&
+      !contains(toJSON(github.event.issue.labels.*.name), 'security-agent-processed')
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: supabase/supabase-security-agent/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r supabase/supabase-security-agent/requirements.txt
+
+      - name: Process security issue
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_OWNER: ${{ github.repository_owner }}
+          GITHUB_REPO: ${{ github.event.repository.name }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          SENTRY_ENVIRONMENT: production
+        working-directory: supabase/supabase-security-agent
+        run: |
+          echo "Processing issue #${{ github.event.issue.number }}: ${{ github.event.issue.title }}"
+
+          python -m security_agent.main_with_sentry \
+            --issue-number ${{ github.event.issue.number }}
+
+          echo "Issue processing complete"

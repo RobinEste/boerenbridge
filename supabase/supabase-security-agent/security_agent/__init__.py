@@ -7,7 +7,7 @@ and generates SQL migrations to fix them.
 
 __version__ = "1.0.0"
 
-from .main import SecurityAgent, AgentConfig, Vulnerability, SecurityFix
+from .main_with_sentry import SecurityAgent, AgentConfig, Vulnerability, SecurityFix
 
 __all__ = [
     "SecurityAgent",
