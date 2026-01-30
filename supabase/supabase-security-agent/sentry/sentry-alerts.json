@@ -1,0 +1,232 @@
+{
+  "alert_rules": [
+    {
+      "name": "🚨 Critical Security Vulnerability",
+      "environment": "production",
+      "actionMatch": "all",
+      "filterMatch": "all",
+      "frequency": 5,
+      "conditions": [
+        {
+          "id": "sentry.rules.conditions.event_attribute.EventAttributeCondition",
+          "attribute": "level",
+          "match": "eq",
+          "value": "fatal"
+        },
+        {
+          "id": "sentry.rules.conditions.tagged_event.TaggedEventCondition",
+          "key": "severity",
+          "match": "eq",
+          "value": "critical"
+        }
+      ],
+      "actions": [
+        {
+          "id": "sentry.integrations.slack.notify_action.SlackNotifyServiceAction",
+          "workspace": "${SLACK_WORKSPACE_ID}",
+          "channel": "#security-alerts",
+          "tags": "severity,vulnerability_type,affected_count",
+          "notes": "🚨 CRITICAL SECURITY VULNERABILITY\n\nCheck: {title}\nSeverity: {tags.severity}\nAffected: {tags.affected_count} objects\n\nView in Sentry: {link}"
+        },
+        {
+          "id": "sentry.mail.actions.NotifyEmailAction",
+          "targetType": "Member",
+          "targetIdentifier": "${SECURITY_TEAM_EMAIL}"
+        },
+        {
+          "id": "sentry.mail.actions.NotifyEmailAction",
+          "targetType": "Member",
+          "targetIdentifier": "${CTO_EMAIL}"
+        }
+      ]
+    },
+    {
+      "name": "⚠️ High Severity Vulnerability",
+      "environment": "production",
+      "actionMatch": "all",
+      "filterMatch": "all",
+      "frequency": 15,
+      "conditions": [
+        {
+          "id": "sentry.rules.conditions.event_attribute.EventAttributeCondition",
+          "attribute": "level",
+          "match": "eq",
+          "value": "error"
+        },
+        {
+          "id": "sentry.rules.conditions.tagged_event.TaggedEventCondition",
+          "key": "severity",
+          "match": "eq",
+          "value": "high"
+        }
+      ],
+      "actions": [
+        {
+          "id": "sentry.integrations.slack.notify_action.SlackNotifyServiceAction",
+          "workspace": "${SLACK_WORKSPACE_ID}",
+          "channel": "#security-alerts",
+          "tags": "severity,vulnerability_type",
+          "notes": "⚠️ HIGH SEVERITY VULNERABILITY\n\nCheck: {title}\nView in Sentry: {link}"
+        },
+        {
+          "id": "sentry.mail.actions.NotifyEmailAction",
+          "targetType": "Member",
+          "targetIdentifier": "${SECURITY_TEAM_EMAIL}"
+        }
+      ]
+    },
+    {
+      "name": "🔧 Security Agent Error Spike",
+      "environment": "production",
+      "actionMatch": "all",
+      "filterMatch": "all",
+      "frequency": 60,
+      "conditions": [
+        {
+          "id": "sentry.rules.conditions.event_frequency.EventFrequencyCondition",
+          "comparisonType": "count",
+          "interval": "1h",
+          "value": 5
+        },
+        {
+          "id": "sentry.rules.conditions.tagged_event.TaggedEventCondition",
+          "key": "component",
+          "match": "eq",
+          "value": "security-agent"
+        }
+      ],
+      "actions": [
+        {
+          "id": "sentry.integrations.slack.notify_action.SlackNotifyServiceAction",
+          "workspace": "${SLACK_WORKSPACE_ID}",
+          "channel": "#ops-alerts",
+          "notes": "🔧 AGENT ERROR SPIKE\n\nMultiple errors detected in security agent.\nCheck logs for details.\n\nView in Sentry: {link}"
+        },
+        {
+          "id": "sentry.mail.actions.NotifyEmailAction",
+          "targetType": "Member",
+          "targetIdentifier": "${DEVOPS_EMAIL}"
+        }
+      ]
+    },
+    {
+      "name": "🤖 Claude API Errors",
+      "environment": "production",
+      "actionMatch": "all",
+      "filterMatch": "all",
+      "frequency": 30,
+      "conditions": [
+        {
+          "id": "sentry.rules.conditions.tagged_event.TaggedEventCondition",
+          "key": "error_type",
+          "match": "eq",
+          "value": "llm"
+        }
+      ],
+      "actions": [
+        {
+          "id": "sentry.integrations.slack.notify_action.SlackNotifyServiceAction",
+          "workspace": "${SLACK_WORKSPACE_ID}",
+          "channel": "#ops-alerts",
+          "notes": "🤖 CLAUDE API ERROR\n\n{title}\n\nModel: {tags.model}\nOperation: {tags.operation}\n\nView in Sentry: {link}"
+        },
+        {
+          "id": "sentry.mail.actions.NotifyEmailAction",
+          "targetType": "Member",
+          "targetIdentifier": "${DEVOPS_EMAIL}"
+        }
+      ]
+    },
+    {
+      "name": "🐙 GitHub API Errors",
+      "environment": "production",
+      "actionMatch": "all",
+      "filterMatch": "all",
+      "frequency": 30,
+      "conditions": [
+        {
+          "id": "sentry.rules.conditions.tagged_event.TaggedEventCondition",
+          "key": "error_type",
+          "match": "eq",
+          "value": "github"
+        }
+      ],
+      "actions": [
+        {
+          "id": "sentry.integrations.slack.notify_action.SlackNotifyServiceAction",
+          "workspace": "${SLACK_WORKSPACE_ID}",
+          "channel": "#ops-alerts",
+          "notes": "🐙 GITHUB API ERROR\n\n{title}\n\nOperation: {tags.github_operation}\n\nView in Sentry: {link}"
+        },
+        {
+          "id": "sentry.mail.actions.NotifyEmailAction",
+          "targetType": "Member",
+          "targetIdentifier": "${DEVOPS_EMAIL}"
+        }
+      ]
+    },
+    {
+      "name": "📊 Medium/Low Findings (Batched)",
+      "environment": "production",
+      "actionMatch": "all",
+      "filterMatch": "any",
+      "frequency": 1440,
+      "conditions": [
+        {
+          "id": "sentry.rules.conditions.tagged_event.TaggedEventCondition",
+          "key": "severity",
+          "match": "eq",
+          "value": "medium"
+        },
+        {
+          "id": "sentry.rules.conditions.tagged_event.TaggedEventCondition",
+          "key": "severity",
+          "match": "eq",
+          "value": "low"
+        }
+      ],
+      "actions": [
+        {
+          "id": "sentry.mail.actions.NotifyEmailAction",
+          "targetType": "Member",
+          "targetIdentifier": "${SECURITY_TEAM_EMAIL}"
+        }
+      ]
+    }
+  ],
+  "metric_alerts": [
+    {
+      "name": "🐢 Slow Security Scans",
+      "dataset": "transactions",
+      "query": "transaction:\"/security-scanner\"",
+      "aggregate": "p95(transaction.duration)",
+      "timeWindow": 60,
+      "triggers": [
+        {
+          "label": "critical",
+          "alertThreshold": 120000,
+          "actions": [
+            {
+              "type": "slack",
+              "channel": "#ops-alerts"
+            },
+            {
+              "type": "email",
+              "targetIdentifier": "${DEVOPS_EMAIL}"
+            }
+          ]
+        },
+        {
+          "label": "warning",
+          "alertThreshold": 60000,
+          "actions": [
+            {
+              "type": "slack",
+              "channel": "#ops-alerts"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
