@@ -566,7 +566,49 @@ async function getLastScanStatus(supabase: SupabaseClient): Promise<ScanResult |
 }
 
 /**
- * Create GitHub Issues for vulnerabilities
+ * Get existing open security issues to prevent duplicates
+ */
+async function getExistingIssues(
+  token: string,
+  owner: string,
+  repo: string
+): Promise<Set<string>> {
+  const existingChecks = new Set<string>();
+
+  try {
+    const response = await fetch(
+      `${GITHUB_API_URL}/repos/${owner}/${repo}/issues?labels=security,automated&state=open&per_page=100`,
+      {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/vnd.github+json',
+          'X-GitHub-Api-Version': '2022-11-28'
+        }
+      }
+    );
+
+    if (response.ok) {
+      const issues = await response.json();
+      for (const issue of issues) {
+        // Extract check ID from title: "[SEVERITY] Check Name" or batch issues
+        const title = issue.title as string;
+        if (title.includes('] ')) {
+          const checkName = title.split('] ')[1];
+          existingChecks.add(checkName);
+        } else if (title.startsWith('Security Scan:')) {
+          existingChecks.add('batch');
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('Could not fetch existing issues for dedup:', err);
+  }
+
+  return existingChecks;
+}
+
+/**
+ * Create GitHub Issues for vulnerabilities (with deduplication)
  */
 async function createGitHubIssues(vulnerabilities: Vulnerability[], scanId: string): Promise<void> {
   const githubToken = Deno.env.get('GITHUB_TOKEN');
@@ -579,6 +621,10 @@ async function createGitHubIssues(vulnerabilities: Vulnerability[], scanId: stri
     return;
   }
 
+  // Fetch existing open issues to prevent duplicates
+  const existingIssues = await getExistingIssues(githubToken, githubOwner, githubRepo);
+  addScanBreadcrumb(`Found ${existingIssues.size} existing open security issues`, 'github');
+
   // Group by severity
   const criticalHigh = vulnerabilities.filter(v =>
     v.severity === 'critical' || v.severity === 'high'
@@ -587,16 +633,24 @@ async function createGitHubIssues(vulnerabilities: Vulnerability[], scanId: stri
     v.severity === 'medium' || v.severity === 'low'
   );
 
-  // Create individual issues for critical/high
+  // Create individual issues for critical/high (skip if already exists)
   for (const vuln of criticalHigh) {
+    if (existingIssues.has(vuln.check_name)) {
+      console.log(`Skipping duplicate issue for: ${vuln.check_name}`);
+      addScanBreadcrumb(`Skipped duplicate: ${vuln.check_name}`, 'github');
+      continue;
+    }
     const issue = formatGitHubIssue(vuln, scanId);
     await createGitHubIssue(githubToken, githubOwner, githubRepo, issue);
   }
 
-  // Batch medium/low into one issue
-  if (mediumLow.length > 0) {
+  // Batch medium/low into one issue (skip if batch already exists)
+  if (mediumLow.length > 0 && !existingIssues.has('batch')) {
     const batchIssue = formatBatchGitHubIssue(mediumLow, scanId);
     await createGitHubIssue(githubToken, githubOwner, githubRepo, batchIssue);
+  } else if (mediumLow.length > 0) {
+    console.log('Skipping duplicate batch issue');
+    addScanBreadcrumb('Skipped duplicate batch issue', 'github');
   }
 }
 
