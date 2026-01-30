@@ -88,14 +88,22 @@ class SupabaseService {
     }
 
     // Maak game aan
-    final gameResponse = await _client
-        .from('games')
-        .insert({
-          'rules': rules.toJson(),
-          'host_id': currentUserId,
-        })
-        .select()
-        .single();
+    final Map<String, dynamic> gameResponse;
+    try {
+      gameResponse = await _client
+          .from('games')
+          .insert({
+            'rules': rules.toJson(),
+            'host_id': currentUserId,
+          })
+          .select()
+          .single();
+    } on PostgrestException catch (e) {
+      if (e.message.contains('Rate limit')) {
+        throw RateLimitException();
+      }
+      rethrow;
+    }
 
     final gameId = gameResponse['id'] as String;
     final joinCode = gameResponse['join_code'] as String;
@@ -657,4 +665,9 @@ class GameInfo {
 class ConcurrentModificationException implements Exception {
   @override
   String toString() => 'Concurrent modification detected. Please retry.';
+}
+
+class RateLimitException implements Exception {
+  @override
+  String toString() => 'Je kunt maximaal 1 game per 10 minuten aanmaken.';
 }

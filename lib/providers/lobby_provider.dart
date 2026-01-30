@@ -92,6 +92,12 @@ class LobbyNotifier extends StateNotifier<LobbyState> {
       );
 
       return gameInfo.joinCode;
+    } on RateLimitException {
+      state = state.copyWith(
+        isLoading: false,
+        error: 'Je kunt maximaal 1 game per 10 minuten aanmaken.',
+      );
+      return null;
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
