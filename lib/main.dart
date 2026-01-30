@@ -14,6 +14,15 @@ import 'theme/app_colors.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Valideer dat credentials aanwezig zijn (via --dart-define-from-file)
+  if (AppConfig.supabaseUrl.isEmpty || AppConfig.supabaseAnonKey.isEmpty) {
+    throw StateError(
+      'Supabase credentials ontbreken. Start de app met:\n'
+      '  flutter run --dart-define-from-file=.env.json\n'
+      'Zie .env.example.json voor het verwachte formaat.',
+    );
+  }
+
   // Initialiseer Supabase
   await SupabaseService.initialize(
     supabaseUrl: AppConfig.supabaseUrl,
