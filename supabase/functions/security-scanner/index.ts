@@ -10,8 +10,7 @@
  *   GET  /security-scanner/status   - Get last scan status
  */
 
-import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
-import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
+import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { SECURITY_CHECKS, getCheckById } from './checks.ts';
 import {
   Vulnerability,
@@ -61,7 +60,7 @@ const DEFAULT_CONFIG: ScannerConfig = {
 /**
  * Main handler with Sentry wrapper
  */
-serve(async (req: Request) => {
+Deno.serve(async (req: Request) => {
   // Initialize Sentry at the start of each request
   initSentry();
 
