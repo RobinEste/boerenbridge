@@ -15,10 +15,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+        uses: subosito/flutter-action@fd55f4c5af5b953cc57a2be44cb082c8f6635e8e # v2
         with:
           flutter-version: '3.38.9'
           channel: 'stable'
@@ -38,21 +38,21 @@ jobs:
         run: flutter build web --release --dart-define-from-file=.env.json
 
       - name: Deploy to server
-        uses: appleboy/scp-action@v0.1.7
+        uses: appleboy/scp-action@917f8b81dfc1ccd331fef9e2d61bdc6c8be94634 # v0.1.7
         with:
-          host: 91.98.65.86
-          username: root
+          host: ${{ secrets.SERVER_HOST }}
+          username: deploy
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           source: "build/web/*"
           target: "/var/www/boerenbridge"
           strip_components: 2
 
       - name: Set permissions
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@029f5b4aeeeb58fdfe1410a5d17f967dacf36262 # v1.0.3
         with:
-          host: 91.98.65.86
-          username: root
+          host: ${{ secrets.SERVER_HOST }}
+          username: deploy
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            chown -R www-data:www-data /var/www/boerenbridge
+            sudo chown -R www-data:www-data /var/www/boerenbridge
             echo "Deploy complete at $(date)"

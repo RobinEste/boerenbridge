@@ -181,6 +181,21 @@ ufw deny <poort>/tcp
 ## Roadmap
 
 ### Te doen
+
+#### Server hardening (n.a.v. AI-Readiness-Audit incident)
+- [x] SSH hardening: dedicated deploy-user, PasswordAuthentication no, PermitRootLogin no
+- [x] Fail2ban installeren en configureren (SSH jail)
+- [ ] Hetzner Cloud Firewall aanmaken (alleen 22/80/443, SSH beperkt tot eigen IP)
+- [x] GitHub Actions pinnen op SHA digest (supply chain security)
+- [x] `/tmp` mounten met noexec,nosuid,nodev
+- [x] Kernel sysctl hardening (SYN flood, anti-spoofing, ICMP)
+- [x] Nginx security headers uitbreiden (CSP, HSTS, Permissions-Policy)
+- [x] Server audit trail (auditd)
+- [x] Server IP als GitHub secret i.p.v. hardcoded
+- [x] Unattended-upgrades configureren
+- [ ] Uptime monitoring (Sentry of extern)
+
+#### Features
 - [ ] Sound effects
 - [ ] Statistieken en geschiedenis
 - [ ] Push notifications
