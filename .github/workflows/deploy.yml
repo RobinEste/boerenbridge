@@ -38,26 +38,14 @@ jobs:
         run: flutter build web --release --dart-define-from-file=.env.json
 
       - name: Deploy to server
-        uses: appleboy/scp-action@917f8b81dfc1ccd331fef9e2d61bdc6c8be94634 # v0.1.7
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: deploy
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "build/web/*"
-          target: "/tmp/boerenbridge-deploy"
-          strip_components: 2
-          overwrite: true
-          rm: true
-
-      - name: Activate deploy
-        uses: appleboy/ssh-action@029f5b4aeeeb58fdfe1410a5d17f967dacf36262 # v1.0.3
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: deploy
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            sudo rm -rf /var/www/boerenbridge/*
-            cp -r /tmp/boerenbridge-deploy/* /var/www/boerenbridge/
-            sudo chown -R www-data:www-data /var/www/boerenbridge
-            rm -rf /tmp/boerenbridge-deploy
-            echo "Deploy complete at $(date)"
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          SSH_OPTS="-i ~/.ssh/deploy_key -o StrictHostKeyChecking=no"
+          rsync -az --delete -e "ssh $SSH_OPTS" build/web/ deploy@${SERVER_HOST}:/tmp/boerenbridge-deploy/
+          ssh $SSH_OPTS deploy@${SERVER_HOST} 'sudo rm -rf /var/www/boerenbridge/* && cp -r /tmp/boerenbridge-deploy/* /var/www/boerenbridge/ && sudo chown -R www-data:www-data /var/www/boerenbridge && rm -rf /tmp/boerenbridge-deploy && echo "Deploy complete at $(date)"'
+          rm -f ~/.ssh/deploy_key
