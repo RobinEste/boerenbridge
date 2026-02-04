@@ -57,3 +57,33 @@ Deze findings zijn by design en uitgesloten van de scanner:
 | `SUPABASE_SERVICE_ROLE_KEY` | Service role key |
 | `ANTHROPIC_API_KEY` | Claude API key (voor security agent) |
 | `SENTRY_DSN` | Sentry DSN (EU, `*.ingest.de.sentry.io`) — ook als Supabase secret |
+
+## Sessie Management
+
+Dit project gebruikt een werklog (`.claude/worklog.md`) om context tussen sessies te bewaren.
+
+### Werklog discipline
+- **Begin sessie:** Gebruik `/sessie-start` om context te laden
+- **Tijdens sessie:** Werklog wordt automatisch bijgewerkt via `/sessie-eind`
+- **Einde sessie:** Gebruik `/sessie-eind` om af te sluiten en werklog bij te werken
+- **Tussendoor:** Gebruik `/status` voor een snel overzicht
+
+### Regels
+- De werklog bevat maximaal 5 sessie-historie rijen (oudste wordt verwijderd)
+- Werklog wordt **alleen** bijgewerkt via `/sessie-eind`, niet handmatig
+- Bij onverwachte afsluiting: begin volgende sessie gewoon met `/sessie-start`
+
+## Slash Commands
+
+| Command | Beschrijving | Wanneer |
+|---------|-------------|---------|
+| `/sessie-start` | Laadt werklog, roadmap, git status | Begin van een sessie |
+| `/sessie-eind` | Checklist, tests, werklog bijwerken | Einde van een sessie |
+| `/status` | Compact overzicht taak + git | Tussendoor |
+
+### Voorbeelden
+```
+/sessie-start          → Laadt context, toont samenvatting, vraagt wat je wilt doen
+/status                → Snel overzicht: taak + git status
+/sessie-eind           → Checklist doorlopen, werklog bijwerken, push-herinnering
+```
