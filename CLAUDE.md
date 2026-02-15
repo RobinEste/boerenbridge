@@ -58,6 +58,34 @@ Deze findings zijn by design en uitgesloten van de scanner:
 | `ANTHROPIC_API_KEY` | Claude API key (voor security agent) |
 | `SENTRY_DSN` | Sentry DSN (EU, `*.ingest.de.sentry.io`) — ook als Supabase secret |
 
+## Server & Deployment (Hetzner VPS 91.98.65.86)
+
+De server wordt gedeeld met het DYM-website project (`~/Projects/DYM-website`).
+
+### Deployment
+- Deploy methode: **rsync** via **deploy** user (niet root!)
+- Lokale SSH: `ssh -i ~/.ssh/id_ed25519_dym_new deploy@91.98.65.86`
+- Web directory: `/var/www/boerenbridge`
+- DYM website: `/var/www/drawyourmap` (apart project, zelfde server)
+
+### Server hardening (setup-server.sh)
+- **SSH:** `PermitRootLogin no`, alleen key-based auth, max 3 pogingen
+- **Firewall (UFW):** default deny incoming, SSH rate limited, poort 22/80/443 open
+- **Fail2ban:** 3 mislukte SSH pogingen = 1 uur IP-ban via UFW
+- **Deploy user:** beperkte sudo rechten via `/etc/sudoers.d/deploy`
+- **Kernel hardening:** SYN flood protection, anti-spoofing, /tmp noexec
+- **Unattended-upgrades:** dagelijks security patches, geen auto-reboot
+
+### Troubleshooting SSH "Connection refused"
+1. Waarschijnlijk fail2ban IP-ban → oplossen via Hetzner VNC Console
+2. `fail2ban-client status sshd` — toont gebande IPs
+3. `fail2ban-client set sshd unbanip <IP>` — unban
+4. UFW-regels blijven soms hangen na unban → `ufw delete reject from <IP>`
+5. Hetzner Rescue Mode als noodtoegang (gebruik alleen letters+cijfers als wachtwoord in VNC)
+
+### Wijzigingen aan server hardening
+Let op: wijzigingen aan de server hardening raken ook het DYM-website project. Controleer altijd beide deploy workflows na aanpassingen.
+
 ## Sessie Management
 
 Dit project gebruikt een werklog (`.claude/worklog.md`) om context tussen sessies te bewaren.
